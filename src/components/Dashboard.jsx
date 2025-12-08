@@ -384,6 +384,18 @@ function Dashboard() {
     setShowAddCarForm(false);
   };
 
+  // Find cars owned by the current user (handle both string and object for owner)
+  const myCars = currentUser ? vehicleList.filter(v => {
+    if (!v.owner || !currentUser._id) return false;
+    if (typeof v.owner === 'string') return v.owner === currentUser._id;
+    if (typeof v.owner === 'object' && v.owner._id) return v.owner._id === currentUser._id;
+    return false;
+  }) : [];
+
+  // State for remove dialog
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [selectedRemoveCar, setSelectedRemoveCar] = useState('');
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
@@ -401,9 +413,49 @@ function Dashboard() {
           }}>
             {showAddCarForm ? '✕ Cancel' : '+ Add Car'}
           </button>
+          {myCars.length > 0 && (
+            <button className="remove-listing-btn" onClick={() => setShowRemoveDialog(true)}>
+              🗑️ Remove My Listing
+            </button>
+          )}
           <button className="logout-btn" onClick={handleLogout}>Logout</button>
         </div>
       </div>
+      {/* Remove Listing Dialog */}
+      {showRemoveDialog && (
+        <div className="modal-overlay" onClick={() => setShowRemoveDialog(false)}>
+          <div className="remove-listing-modal" onClick={e => e.stopPropagation()}>
+            <h2>Remove Your Car Listing</h2>
+            <p>Select a car to remove from your listings:</p>
+            <select
+              value={selectedRemoveCar}
+              onChange={e => setSelectedRemoveCar(e.target.value)}
+              className="remove-car-select"
+            >
+              <option value="">-- Select Your Car --</option>
+              {myCars.map(car => (
+                <option key={car._id} value={car._id}>{car.name}</option>
+              ))}
+            </select>
+            <div className="modal-buttons">
+              <button onClick={() => setShowRemoveDialog(false)} className="cancel-btn">Cancel</button>
+              <button
+                className="confirm-btn"
+                disabled={!selectedRemoveCar}
+                onClick={() => {
+                  if (selectedRemoveCar) {
+                    handleDeleteCar(selectedRemoveCar);
+                    setShowRemoveDialog(false);
+                    setSelectedRemoveCar('');
+                  }
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {successMessage && <div className="success-msg">{successMessage}</div>}
 
@@ -545,14 +597,31 @@ function Dashboard() {
         ) : (
           <div className="vehicles-grid">
             {vehicleList.map((vehicle) => {
-              const isOwnCar = currentUser && vehicle.owner === currentUser._id;
+              // Robust check for ownership
+              const isOwnCar = currentUser && (
+                (typeof vehicle.owner === 'string' && vehicle.owner === currentUser._id) ||
+                (typeof vehicle.owner === 'object' && vehicle.owner && vehicle.owner._id === currentUser._id)
+              );
               return (
                 <div key={vehicle._id} className="vehicle-card">
                   <div className="vehicle-image-wrapper">
                     <img src={vehicle.image} alt={vehicle.name} className="vehicle-image" />
                     <span className="vehicle-type-badge">{vehicle.type}</span>
+                    {/* Show delete cross for owner's cars */}
+                    {isOwnCar && (
+                      <button
+                        className="delete-cross-btn"
+                        title="Delete this ad"
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this ad?')) {
+                            handleDeleteCar(vehicle._id);
+                          }
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
-                  
                   <div className="card-content">
                     <div className="card-header">
                       <h3>{vehicle.name}</h3>
