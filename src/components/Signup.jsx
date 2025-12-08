@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-const API_URL = 'http://localhost:5000/api';
+// Use environment variable for backend URL
+const API_URL = import.meta.env.VITE_API_URL;
 
 function Signup() {
   const navigate = useNavigate();
@@ -98,7 +99,11 @@ function Signup() {
             <p className="auth-subtitle">Join GearGIK today</p>
             
             <form onSubmit={handleSignup}>
-              {error && <div style={{ color: '#ff6b6b', marginBottom: '15px', padding: '10px', backgroundColor: '#ffe0e0', borderRadius: '5px' }}>{error}</div>}
+              {error && (
+                <div style={{ color: '#ff6b6b', marginBottom: '15px', padding: '10px', backgroundColor: '#ffe0e0', borderRadius: '5px' }}>
+                  {error}
+                </div>
+              )}
               
               <div className="form-group">
                 <label htmlFor="fullName">Full Name</label>
