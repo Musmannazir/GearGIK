@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-2.onrender.com/api';
 
 // Available Locations
 const AVAILABLE_LOCATIONS = [
