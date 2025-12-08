@@ -65,6 +65,7 @@ function Dashboard() {
       setLoading(true);
       setError('');
       
+      console.log('Fetching vehicles from:', `${API_URL}/vehicles`);
       const response = await fetch(`${API_URL}/vehicles`);
       const data = await response.json();
 
