@@ -4,5 +4,11 @@
   "devCommand": "npm run dev",
   "env": {
     "VITE_API_URL": "https://geargik-backend-2.onrender.com/api"
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
