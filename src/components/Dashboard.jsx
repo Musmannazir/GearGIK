@@ -65,18 +65,25 @@ function Dashboard() {
       setLoading(true);
       setError('');
       
-      console.log('Fetching vehicles from:', `${API_URL}/vehicles`);
-      const response = await fetch(`${API_URL}/vehicles`);
-      const data = await response.json();
-
+      const vehicleUrl = `${API_URL}/vehicles`;
+      console.log('Using API_URL:', API_URL);
+      console.log('Fetching vehicles from:', vehicleUrl);
+      
+      const response = await fetch(vehicleUrl);
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to load vehicles');
+        console.error('API response not ok. Status:', response.status);
+        const data = await response.json();
+        throw new Error(data.error || `Failed to load vehicles (${response.status})`);
       }
-
+      
+      const data = await response.json();
+      console.log('Vehicles fetched successfully:', data);
       setVehicleList(data);
     } catch (err) {
-      setError(err.message);
       console.error('Error fetching vehicles:', err);
+      setError(err.message);
       setVehicleList([]);
     } finally {
       setLoading(false);
@@ -226,9 +233,270 @@ function Dashboard() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
+
   return (
     <div className="dashboard-container">
-      {/* ...rest of your JSX remains unchanged */}
+      <div className="dashboard-header">
+        <h1>GearGIK Dashboard</h1>
+        <div className="header-buttons">
+          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          <button className="add-car-btn" onClick={() => setShowAddCarForm(!showAddCarForm)}>
+            {showAddCarForm ? 'Cancel' : '+ Add Car'}
+          </button>
+        </div>
+      </div>
+
+      {successMessage && <div className="success-msg">{successMessage}</div>}
+
+      {showAddCarForm && (
+        <div className="add-car-form-container">
+          <h2>Add Your Car</h2>
+          <form onSubmit={handleAddCar} className="add-car-form">
+            <div className="form-row">
+              <div className="form-group">
+                <label>Car Name *</label>
+                <input
+                  type="text"
+                  value={newCar.name}
+                  onChange={(e) => setNewCar({ ...newCar, name: e.target.value })}
+                  placeholder="e.g., Honda Civic 2020"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Car Type</label>
+                <select
+                  value={newCar.type}
+                  onChange={(e) => setNewCar({ ...newCar, type: e.target.value })}
+                >
+                  <option>Sedan</option>
+                  <option>SUV</option>
+                  <option>Hatchback</option>
+                  <option>Coupe</option>
+                  <option>Truck</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Price Per Hour (PKR) *</label>
+                <input
+                  type="number"
+                  value={newCar.pricePerHour}
+                  onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })}
+                  placeholder="e.g., 500"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Your Phone Number *</label>
+                <input
+                  type="text"
+                  value={newCar.phone}
+                  onChange={(e) => setNewCar({ ...newCar, phone: e.target.value })}
+                  placeholder="e.g., 03001234567"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Your Registration Number *</label>
+                <input
+                  type="text"
+                  value={newCar.regNo}
+                  onChange={(e) => setNewCar({ ...newCar, regNo: e.target.value })}
+                  placeholder="e.g., ABC-1234"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Location</label>
+                <select
+                  value={newCar.location}
+                  onChange={(e) => setNewCar({ ...newCar, location: e.target.value })}
+                >
+                  {AVAILABLE_LOCATIONS.map((loc) => (
+                    <option key={loc.value} value={loc.value}>
+                      {loc.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Car Image *</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                required
+              />
+              {imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}
+            </div>
+
+            <div className="form-group">
+              <label>Features</label>
+              <div className="feature-input-group">
+                <input
+                  type="text"
+                  value={featureInput}
+                  onChange={(e) => setFeatureInput(e.target.value)}
+                  placeholder="e.g., AC, Power Steering, ABS"
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+                />
+                <button type="button" onClick={handleAddFeature}>Add Feature</button>
+              </div>
+              <div className="features-list">
+                {newCar.features.map((feature, idx) => (
+                  <span key={idx} className="feature-tag">
+                    {feature}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFeature(idx)}
+                      className="remove-feature"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="submit-btn">Add Car</button>
+          </form>
+        </div>
+      )}
+
+      {error && <div className="error-msg">{error}</div>}
+
+      <div className="vehicles-container">
+        {loading ? (
+          <p className="loading">Loading vehicles...</p>
+        ) : vehicleList.length === 0 ? (
+          <p className="no-vehicles">No vehicles available yet. Be the first to add one!</p>
+        ) : (
+          <div className="vehicles-grid">
+            {vehicleList.map((vehicle) => {
+              const isOwnCar = currentUser && vehicle.owner === currentUser._id;
+              return (
+                <div key={vehicle._id} className="vehicle-card">
+                  <img src={vehicle.image} alt={vehicle.name} className="vehicle-image" />
+                  <h3>{vehicle.name}</h3>
+                  <p className="vehicle-type">{vehicle.type}</p>
+                  <p className="vehicle-price">PKR {vehicle.pricePerHour}/hour</p>
+                  
+                  <div className="owner-info">
+                    <p><strong>Owner:</strong> {vehicle.owner?.fullName}</p>
+                    <p className="owner-phone"><strong>📞</strong> {vehicle.ownerPhone}</p>
+                    <p className="owner-regno"><strong>🏷️</strong> {vehicle.ownerRegNo}</p>
+                  </div>
+
+                  {vehicle.features && vehicle.features.length > 0 && (
+                    <div className="features">
+                      {vehicle.features.map((feature, idx) => (
+                        <span key={idx} className="feature">{feature}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {isOwnCar ? (
+                    <p className="owned-tag">Your Car</p>
+                  ) : !vehicle.isAvailable ? (
+                    <button className="rent-btn-disabled" disabled>Already Booked</button>
+                  ) : (
+                    <button className="rent-btn" onClick={() => handleBookClick(vehicle)}>
+                      Book Now
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {selectedVehicle && (
+        <div className="modal-overlay" onClick={() => setSelectedVehicle(null)}>
+          <div className="booking-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="modal-close"
+              onClick={() => setSelectedVehicle(null)}
+            >
+              ✕
+            </button>
+            <h2>Book {selectedVehicle.name}</h2>
+            
+            <form onSubmit={confirmBooking} className="booking-form">
+              <div className="form-group">
+                <label>Owner Location:</label>
+                <div className="location-display">
+                  {selectedVehicle.location}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Duration (hours) *</label>
+                <select value={bookingData.hours} onChange={handleHoursChange} required>
+                  {[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (
+                    <option key={hr} value={hr}>
+                      {hr} hour{hr > 1 ? 's' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Your Phone Number *</label>
+                <input
+                  type="text"
+                  value={bookingData.phone}
+                  onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
+                  placeholder="03001234567"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Your Registration Number *</label>
+                <input
+                  type="text"
+                  value={bookingData.regNo}
+                  onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })}
+                  placeholder="ABC-1234"
+                  required
+                />
+              </div>
+
+              <div className="booking-summary">
+                <p>Vehicle: <strong>{selectedVehicle.name}</strong></p>
+                <p>Duration: <strong>{bookingData.hours} hour{bookingData.hours > 1 ? 's' : ''}</strong></p>
+                <p>Price: <strong>PKR {selectedVehicle.pricePerHour}/hour</strong></p>
+                <p className="total-cost">
+                  Total: <strong>PKR {totalCost.toLocaleString()}</strong>
+                </p>
+              </div>
+
+              <div className="modal-buttons">
+                <button type="button" onClick={() => setSelectedVehicle(null)} className="cancel-btn">
+                  Cancel
+                </button>
+                <button type="submit" className="confirm-btn">
+                  Confirm Booking
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
