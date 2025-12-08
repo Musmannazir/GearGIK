@@ -233,10 +233,57 @@ function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/');
+  const handleDeleteCar = async (vehicleId) => {
+    if (!window.confirm('Are you sure you want to remove this car from your fleet?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/vehicles/${vehicleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete vehicle');
+      }
+
+      setVehicleList(vehicleList.filter(v => v._id !== vehicleId));
+      setSuccessMessage('Car removed successfully! 🗑️');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(`Error deleting car: ${err.message}`);
+      console.error('Delete error:', err);
+    }
+  };
+
+  const handleMakeAvailable = async (vehicleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/vehicles/${vehicleId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isAvailable: true }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update vehicle');
+      }
+
+      const updatedVehicle = await response.json();
+      setVehicleList(vehicleList.map(v => v._id === vehicleId ? updatedVehicle.vehicle : v));
+      setSuccessMessage('Car is available for rent again! ✅');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(`Error updating car: ${err.message}`);
+      console.error('Update error:', err);
+    }
   };
 
   return (
@@ -422,9 +469,29 @@ function Dashboard() {
 
                     <div className="card-footer">
                       {isOwnCar ? (
-                        <p className="owned-tag">Your Car</p>
+                        <div className="owner-actions">
+                          <p className="owned-tag">Your Car</p>
+                          <div className="owner-buttons">
+                            {!vehicle.isAvailable && (
+                              <button 
+                                className="make-available-btn"
+                                onClick={() => handleMakeAvailable(vehicle._id)}
+                              >
+                                📋 Make Available
+                              </button>
+                            )}
+                            <button 
+                              className="delete-car-btn"
+                              onClick={() => handleDeleteCar(vehicle._id)}
+                            >
+                              🗑️ Remove
+                            </button>
+                          </div>
+                        </div>
                       ) : !vehicle.isAvailable ? (
-                        <button className="rent-btn-disabled" disabled>Already Booked</button>
+                        <button className="rent-btn-rented" disabled>
+                          🔒 Rented
+                        </button>
                       ) : (
                         <button className="rent-btn" onClick={() => handleBookClick(vehicle)}>
                           Book Now
@@ -448,56 +515,82 @@ function Dashboard() {
             >
               ✕
             </button>
-            <h2>Book {selectedVehicle.name}</h2>
             
+            <div className="modal-vehicle-card">
+              <img src={selectedVehicle.image} alt={selectedVehicle.name} className="modal-vehicle-image" />
+              <div className="modal-vehicle-details">
+                <h2>{selectedVehicle.name}</h2>
+                <p className="modal-vehicle-type">{selectedVehicle.type}</p>
+                <p className="modal-vehicle-price">PKR {selectedVehicle.pricePerHour.toLocaleString()}/hour</p>
+              </div>
+            </div>
+
             <form onSubmit={confirmBooking} className="booking-form">
-              <div className="form-group">
-                <label>Owner Location:</label>
-                <div className="location-display">
-                  {selectedVehicle.location}
+              <div className="booking-section">
+                <h3>Booking Details</h3>
+                
+                <div className="form-group">
+                  <label>Duration (hours) *</label>
+                  <select value={bookingData.hours} onChange={handleHoursChange} required>
+                    {[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (
+                      <option key={hr} value={hr}>
+                        {hr} hour{hr > 1 ? 's' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Owner Location</label>
+                  <div className="location-display">
+                    📍 {selectedVehicle.location}
+                  </div>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Duration (hours) *</label>
-                <select value={bookingData.hours} onChange={handleHoursChange} required>
-                  {[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (
-                    <option key={hr} value={hr}>
-                      {hr} hour{hr > 1 ? 's' : ''}
-                    </option>
-                  ))}
-                </select>
+              <div className="booking-section">
+                <h3>Your Information</h3>
+                
+                <div className="form-group">
+                  <label>Your Phone Number *</label>
+                  <input
+                    type="text"
+                    value={bookingData.phone}
+                    onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
+                    placeholder="03001234567"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Your Registration Number *</label>
+                  <input
+                    type="text"
+                    value={bookingData.regNo}
+                    onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })}
+                    placeholder="ABC-1234"
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>Your Phone Number *</label>
-                <input
-                  type="text"
-                  value={bookingData.phone}
-                  onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
-                  placeholder="03001234567"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Your Registration Number *</label>
-                <input
-                  type="text"
-                  value={bookingData.regNo}
-                  onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })}
-                  placeholder="ABC-1234"
-                  required
-                />
-              </div>
-
-              <div className="booking-summary">
-                <p>Vehicle: <strong>{selectedVehicle.name}</strong></p>
-                <p>Duration: <strong>{bookingData.hours} hour{bookingData.hours > 1 ? 's' : ''}</strong></p>
-                <p>Price: <strong>PKR {selectedVehicle.pricePerHour}/hour</strong></p>
-                <p className="total-cost">
-                  Total: <strong>PKR {totalCost.toLocaleString()}</strong>
-                </p>
+              <div className="booking-summary-compact">
+                <div className="summary-row">
+                  <span>Vehicle:</span>
+                  <strong>{selectedVehicle.name}</strong>
+                </div>
+                <div className="summary-row">
+                  <span>Duration:</span>
+                  <strong>{bookingData.hours} hour{bookingData.hours > 1 ? 's' : ''}</strong>
+                </div>
+                <div className="summary-row">
+                  <span>Rate:</span>
+                  <strong>PKR {selectedVehicle.pricePerHour.toLocaleString()}/hour</strong>
+                </div>
+                <div className="summary-row total">
+                  <span>Total Cost:</span>
+                  <strong>PKR {totalCost.toLocaleString()}</strong>
+                </div>
               </div>
 
               <div className="modal-buttons">
