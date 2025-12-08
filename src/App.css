@@ -1028,6 +1028,28 @@ html, body, #root {
   box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
 }
 
+.edit-car-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+.edit-car-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
 .rent-btn {
   width: 100%;
   padding: 14px;

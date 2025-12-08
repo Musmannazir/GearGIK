@@ -25,6 +25,7 @@ function Dashboard() {
   const [bookingData, setBookingData] = useState({ hours: 1, location: '', phone: '', regNo: '' });
   const [totalCost, setTotalCost] = useState(0);
   const [showAddCarForm, setShowAddCarForm] = useState(false);
+  const [editingCar, setEditingCar] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -260,6 +261,81 @@ function Dashboard() {
     }
   };
 
+  const handleEditCar = (vehicle) => {
+    setEditingCar(vehicle._id);
+    setNewCar({
+      name: vehicle.name,
+      type: vehicle.type,
+      pricePerHour: vehicle.pricePerHour,
+      features: vehicle.features,
+      location: vehicle.location,
+      image: vehicle.image,
+      phone: vehicle.ownerPhone,
+      regNo: vehicle.ownerRegNo,
+    });
+    setImagePreview(vehicle.image);
+    setShowAddCarForm(true);
+  };
+
+  const handleUpdateCar = async (e) => {
+    e.preventDefault();
+    
+    if (!newCar.name || !newCar.pricePerHour) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_URL}/vehicles/${editingCar}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newCar.name,
+          type: newCar.type,
+          pricePerHour: parseInt(newCar.pricePerHour),
+          features: newCar.features,
+          location: newCar.location,
+          image: newCar.image,
+          phone: newCar.phone,
+          regNo: newCar.regNo,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update car');
+      }
+
+      setVehicleList(vehicleList.map(v => v._id === editingCar ? data.vehicle : v));
+      
+      setNewCar({
+        name: '',
+        type: 'Sedan',
+        pricePerHour: '',
+        features: [],
+        location: 'FME',
+        image: null,
+        phone: '',
+        regNo: '',
+      });
+      setImagePreview(null);
+      setShowAddCarForm(false);
+      setEditingCar(null);
+      
+      setSuccessMessage('Car updated successfully! ✅');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(`Error updating car: ${err.message}`);
+      console.error('Update error:', err);
+    }
+  };
+
   const handleMakeAvailable = async (vehicleId) => {
     try {
       const token = localStorage.getItem('token');
@@ -292,6 +368,22 @@ function Dashboard() {
     navigate('/');
   };
 
+  const handleCancelEdit = () => {
+    setEditingCar(null);
+    setNewCar({
+      name: '',
+      type: 'Sedan',
+      pricePerHour: '',
+      features: [],
+      location: 'FME',
+      image: null,
+      phone: '',
+      regNo: '',
+    });
+    setImagePreview(null);
+    setShowAddCarForm(false);
+  };
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
@@ -300,7 +392,13 @@ function Dashboard() {
           <p className="header-subtitle">Find and book amazing cars near you</p>
         </div>
         <div className="header-actions">
-          <button className="add-car-btn" onClick={() => setShowAddCarForm(!showAddCarForm)}>
+          <button className="add-car-btn" onClick={() => {
+            if (editingCar) {
+              handleCancelEdit();
+            } else {
+              setShowAddCarForm(!showAddCarForm);
+            }
+          }}>
             {showAddCarForm ? '✕ Cancel' : '+ Add Car'}
           </button>
           <button className="logout-btn" onClick={handleLogout}>Logout</button>
@@ -311,8 +409,8 @@ function Dashboard() {
 
       {showAddCarForm && (
         <div className="add-car-form-container">
-          <h2>Add Your Car</h2>
-          <form onSubmit={handleAddCar} className="add-car-form">
+          <h2>{editingCar ? '✏️ Edit Your Car' : '➕ Add Your Car'}</h2>
+          <form onSubmit={editingCar ? handleUpdateCar : handleAddCar} className="add-car-form">
             <div className="form-row">
               <div className="form-group">
                 <label>Car Name *</label>
@@ -325,7 +423,7 @@ function Dashboard() {
                 />
               </div>
               <div className="form-group">
-                <label>Car Type</label>
+                <label>Vehicle Type</label>
                 <select
                   value={newCar.type}
                   onChange={(e) => setNewCar({ ...newCar, type: e.target.value })}
@@ -335,6 +433,7 @@ function Dashboard() {
                   <option>Hatchback</option>
                   <option>Coupe</option>
                   <option>Truck</option>
+                  <option>Bike</option>
                 </select>
               </div>
             </div>
@@ -427,7 +526,9 @@ function Dashboard() {
               </div>
             </div>
 
-            <button type="submit" className="submit-btn">Add Car</button>
+            <button type="submit" className="submit-btn">
+              {editingCar ? '💾 Update Car' : '➕ Add Car'}
+            </button>
           </form>
         </div>
       )}
@@ -478,12 +579,18 @@ function Dashboard() {
                         <div className="owner-actions">
                           <p className="owned-tag">Your Car</p>
                           <div className="owner-buttons">
+                            <button 
+                              className="edit-car-btn"
+                              onClick={() => handleEditCar(vehicle)}
+                            >
+                              ✏️ Edit
+                            </button>
                             {!vehicle.isAvailable && (
                               <button 
                                 className="make-available-btn"
                                 onClick={() => handleMakeAvailable(vehicle._id)}
                               >
-                                📋 Make Available
+                                📋 Available
                               </button>
                             )}
                             <button 
