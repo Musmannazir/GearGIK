@@ -242,12 +242,15 @@ function Dashboard() {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1>GearGIK Dashboard</h1>
-        <div className="header-buttons">
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+        <div>
+          <h1 className="header-title">GearGIK Dashboard</h1>
+          <p className="header-subtitle">Find and book amazing cars near you</p>
+        </div>
+        <div className="header-actions">
           <button className="add-car-btn" onClick={() => setShowAddCarForm(!showAddCarForm)}>
-            {showAddCarForm ? 'Cancel' : '+ Add Car'}
+            {showAddCarForm ? '✕ Cancel' : '+ Add Car'}
           </button>
+          <button className="logout-btn" onClick={handleLogout}>Logout</button>
         </div>
       </div>
 
@@ -380,7 +383,9 @@ function Dashboard() {
 
       <div className="vehicles-container">
         {loading ? (
-          <p className="loading">Loading vehicles...</p>
+          <div className="loading-spinner">
+            <p className="loading">Loading vehicles...</p>
+          </div>
         ) : vehicleList.length === 0 ? (
           <p className="no-vehicles">No vehicles available yet. Be the first to add one!</p>
         ) : (
@@ -389,34 +394,44 @@ function Dashboard() {
               const isOwnCar = currentUser && vehicle.owner === currentUser._id;
               return (
                 <div key={vehicle._id} className="vehicle-card">
-                  <img src={vehicle.image} alt={vehicle.name} className="vehicle-image" />
-                  <h3>{vehicle.name}</h3>
-                  <p className="vehicle-type">{vehicle.type}</p>
-                  <p className="vehicle-price">PKR {vehicle.pricePerHour}/hour</p>
-                  
-                  <div className="owner-info">
-                    <p><strong>Owner:</strong> {vehicle.owner?.fullName}</p>
-                    <p className="owner-phone"><strong>📞</strong> {vehicle.ownerPhone}</p>
-                    <p className="owner-regno"><strong>🏷️</strong> {vehicle.ownerRegNo}</p>
+                  <div className="vehicle-image-wrapper">
+                    <img src={vehicle.image} alt={vehicle.name} className="vehicle-image" />
+                    <span className="vehicle-type-badge">{vehicle.type}</span>
                   </div>
-
-                  {vehicle.features && vehicle.features.length > 0 && (
-                    <div className="features">
-                      {vehicle.features.map((feature, idx) => (
-                        <span key={idx} className="feature">{feature}</span>
-                      ))}
+                  
+                  <div className="card-content">
+                    <div className="card-header">
+                      <h3>{vehicle.name}</h3>
                     </div>
-                  )}
+                    
+                    <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()}/hour</p>
+                    
+                    <div className="owner-info-card">
+                      <p><strong>Owner:</strong> {vehicle.owner?.fullName}</p>
+                      <p><strong>📞</strong> {vehicle.ownerPhone}</p>
+                      <p><strong>🏷️</strong> {vehicle.ownerRegNo}</p>
+                    </div>
 
-                  {isOwnCar ? (
-                    <p className="owned-tag">Your Car</p>
-                  ) : !vehicle.isAvailable ? (
-                    <button className="rent-btn-disabled" disabled>Already Booked</button>
-                  ) : (
-                    <button className="rent-btn" onClick={() => handleBookClick(vehicle)}>
-                      Book Now
-                    </button>
-                  )}
+                    {vehicle.features && vehicle.features.length > 0 && (
+                      <div className="features-container">
+                        {vehicle.features.map((feature, idx) => (
+                          <span key={idx} className="feature-badge">{feature}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="card-footer">
+                      {isOwnCar ? (
+                        <p className="owned-tag">Your Car</p>
+                      ) : !vehicle.isAvailable ? (
+                        <button className="rent-btn-disabled" disabled>Already Booked</button>
+                      ) : (
+                        <button className="rent-btn" onClick={() => handleBookClick(vehicle)}>
+                          Book Now
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
