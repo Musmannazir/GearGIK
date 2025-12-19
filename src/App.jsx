@@ -5,6 +5,7 @@ import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 import OwnerDashboard from './components/OwnerDashboard';
 import './App.css';
+import Verify from './components/Temp_Verify';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/owner-dashboard" element={<OwnerDashboard />} />
+        <Route path="/verify/:token" element={<Verify />} />
       </Routes>
     </Router>
   );
