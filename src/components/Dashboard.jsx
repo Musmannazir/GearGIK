@@ -361,7 +361,6 @@ function Dashboard() {
       console.error('Update error:', err);
     }
   };
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -598,10 +597,11 @@ function Dashboard() {
           <div className="vehicles-grid">
             {vehicleList.map((vehicle) => {
               // Robust check for ownership
-              const isOwnCar = currentUser && (
-                (typeof vehicle.owner === 'string' && vehicle.owner === currentUser._id) ||
-                (typeof vehicle.owner === 'object' && vehicle.owner && vehicle.owner._id === currentUser._id)
-              );
+             const isOwnCar =
+  vehicle.owner === currentUser?._id ||
+  vehicle.owner?._id === currentUser?._id ||
+  vehicle.ownerPhone === currentUser?.phone;
+
               return (
                 <div key={vehicle._id} className="vehicle-card">
                   <div className="vehicle-image-wrapper">
@@ -630,7 +630,10 @@ function Dashboard() {
                     <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()}/hour</p>
                     
                     <div className="owner-info-card">
-                      <p><strong>Owner:</strong> {vehicle.owner?.fullName}</p>
+<p>
+  <strong>Owner:</strong>{' '}
+  {vehicle.owner?.fullName || 'You'}
+</p>
                       <p><strong>📞</strong> {vehicle.ownerPhone}</p>
                       <p><strong>🏷️</strong> {vehicle.ownerRegNo}</p>
                     </div>
