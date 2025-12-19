@@ -55,12 +55,10 @@ function Signup() {
         throw new Error(data.error || 'Signup failed');
       }
 
-      // Store token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('userRole', 'renter');
+      // SUCCESS: Show alert and redirect to Login
+      alert("Registration successful! Please check your email to verify your account.");
+      navigate('/'); // Assuming '/' is your Login page
 
-      navigate('/dashboard');
     } catch (err) {
       setError(err.message);
       console.error('Signup error:', err);
