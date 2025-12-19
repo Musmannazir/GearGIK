@@ -208,7 +208,7 @@ function Dashboard() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to add car');
+        throw new Error(data.error || 'Failed to add vehicle');
       }
 
       setVehicleList([data.vehicle, ...vehicleList]);
@@ -226,11 +226,11 @@ function Dashboard() {
       setImagePreview(null);
       setShowAddCarForm(false);
       
-      setSuccessMessage('Car added successfully! 🎉');
+      setSuccessMessage('vehicle added successfully! 🎉');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error adding car: ${err.message}`);
-      console.error('Add car error:', err);
+      console.error('Add vehicle error:', err);
     }
   };
 
@@ -411,7 +411,7 @@ function Dashboard() {
               setShowAddCarForm(!showAddCarForm);
             }
           }}>
-            {showAddCarForm ? '✕ Cancel' : '+ Add Car'}
+            {showAddCarForm ? '✕ Cancel' : '+ Add vehicle'}
           </button>
           {myCars.length > 0 && (
             <button className="remove-listing-btn" onClick={() => setShowRemoveDialog(true)}>
@@ -579,7 +579,7 @@ function Dashboard() {
             </div>
 
             <button type="submit" className="submit-btn">
-              {editingCar ? '💾 Update Car' : '➕ Add Car'}
+              {editingCar ? '💾 Update  vehicle' : '➕ Add vehicle'}
             </button>
           </form>
         </div>
