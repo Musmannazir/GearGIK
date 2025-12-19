@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 // Use environment variable for backend URL with fallback
-const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-2.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
 
 function Login() {
   const navigate = useNavigate();
