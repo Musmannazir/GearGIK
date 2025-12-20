@@ -56,7 +56,7 @@ function Signup() {
       }
 
       // SUCCESS: Show alert and redirect to Login
-      alert("Registration successful! Please check your email to verify your account.");
+      alert("Registration successful!");
       navigate('/'); // Assuming '/' is your Login page
 
     } catch (err) {
