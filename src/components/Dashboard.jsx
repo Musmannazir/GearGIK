@@ -52,6 +52,8 @@ function Dashboard() {
     maxDuration: '',
     isShared: false, // --- NEW: Track if car is shared
     pricePerSeat: '', // --- NEW: Price per seat
+    routeFrom: '', // --- NEW: Route Start
+    routeTo: '',   // --- NEW: Route End
     features: [],
     location: 'FME',
     image: null,
@@ -274,6 +276,8 @@ function Dashboard() {
         maxDuration: '',
         isShared: false,
         pricePerSeat: '',
+        routeFrom: '', // Reset Route
+        routeTo: '',   // Reset Route
         features: [],
         location: 'FME',
         image: null,
@@ -326,6 +330,8 @@ function Dashboard() {
       pricePerSeat: vehicle.pricePerSeat,
       isShared: vehicle.isShared,
       maxDuration: vehicle.maxDuration || '',
+      routeFrom: vehicle.routeFrom || '', // Load route info
+      routeTo: vehicle.routeTo || '',     // Load route info
       features: vehicle.features,
       location: vehicle.location,
       image: vehicle.image,
@@ -395,6 +401,7 @@ function Dashboard() {
     setEditingCar(null);
     setNewCar({
         name: '', type: 'Sedan', pricePerHour: '', maxDuration: '', isShared: false, pricePerSeat: '',
+        routeFrom: '', routeTo: '',
         features: [], location: 'FME', image: null, phone: '', regNo: '',
     });
     setImagePreview(null);
@@ -553,10 +560,20 @@ function Dashboard() {
 
             <div className="form-row">
               {newCar.isShared ? (
-                 <div className="form-group">
-                   <label>Price Per Seat (PKR) *</label>
-                   <input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 200" required />
-                 </div>
+                 <>
+                   <div className="form-group">
+                     <label>From (Start) *</label>
+                     <input type="text" value={newCar.routeFrom} onChange={(e) => setNewCar({ ...newCar, routeFrom: e.target.value })} placeholder="e.g. GIKI Hostels" required />
+                   </div>
+                   <div className="form-group">
+                     <label>To (Destination) *</label>
+                     <input type="text" value={newCar.routeTo} onChange={(e) => setNewCar({ ...newCar, routeTo: e.target.value })} placeholder="e.g. Islamabad" required />
+                   </div>
+                   <div className="form-group">
+                     <label>Price Per Seat (PKR) *</label>
+                     <input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 200" required />
+                   </div>
+                 </>
               ) : (
                  <>
                     <div className="form-group">
@@ -649,6 +666,18 @@ function Dashboard() {
                         </div>
                     ) : (
                         <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()}/hour</p>
+                    )}
+
+                    {/* ✅ NEW: Route Display */}
+                    {isSeatSharing && vehicle.routeFrom && (
+                      <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '0.9rem', color: '#475569', marginBottom: '10px', border: '1px solid #e2e8f0' }}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                            <span style={{fontWeight: '600'}}>🛫 From:</span> <span>{vehicle.routeFrom}</span>
+                        </div>
+                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                            <span style={{fontWeight: '600'}}>🏁 To:</span> <span>{vehicle.routeTo}</span>
+                        </div>
+                      </div>
                     )}
 
                     {vehicle.maxDuration && !isSeatSharing && vehicle.maxDuration < 24 && (
