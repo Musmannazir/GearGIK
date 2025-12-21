@@ -2,20 +2,27 @@
    1. GLOBAL VARIABLES & RESET
    ========================================= */
 :root {
-  /* Modern Corporate Palette */
+  /* Professional Color Palette */
   --primary: #2563eb;       /* Royal Blue */
   --primary-hover: #1d4ed8;
-  --accent: #0f172a;        /* Deep Navy */
-  --text-main: #334155;     /* Slate 700 */
-  --text-muted: #64748b;    /* Slate 500 */
-  --bg-body: #f8fafc;       /* Very light grey */
-  --border: #e2e8f0;        /* Light border */
+  --accent: #1e293b;        /* Dark Slate */
+  
+  --bg-body: #f1f5f9;       /* Light Blue-Grey (Not Pure White) */
+  --bg-card: #ffffff;       /* Pure White for Cards */
+  
+  --text-main: #334155;     /* Dark Grey */
+  --text-muted: #64748b;    /* Medium Grey */
   
   --success: #10b981;
   --danger: #ef4444;
+  --warning: #f59e0b;
   
-  --radius: 8px;
-  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  
+  --radius: 12px;
+  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -29,153 +36,89 @@ body {
   background-color: var(--bg-body);
   color: var(--text-main);
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
 }
 
 /* =========================================
-   2. SPLIT-SCREEN AUTH LAYOUT (FIXED)
+   2. AUTHENTICATION (Login/Signup) - CENTERED
    ========================================= */
 .auth-container {
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   display: flex;
-  overflow-x: hidden;
-  background: white;
+  align-items: center;
+  justify-content: center;
+  /* Dark Navy Gradient Background */
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  padding: 20px;
 }
 
-/* Override the old grid layout completely */
 .auth-content {
-  display: flex;
   width: 100%;
-  height: 100vh;
-  max-width: none; /* Remove container limits */
-  gap: 0;
+  display: flex;
+  justify-content: center;
 }
 
-/* --- LEFT SIDE: BRANDING (40% Width) --- */
+/* Hide the left "Branding" side to keep it simple & centered */
 .auth-left {
-  width: 40%;
-  background: var(--accent);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 60px;
-  position: relative;
-  /* Subtle pattern overlay */
-  background-image: radial-gradient(circle at 10% 20%, rgba(255,255,255,0.05) 0%, transparent 20%);
+  display: none; 
 }
 
-.brand-section {
-  max-width: 400px;
-  margin: 0 auto;
-  text-align: left; /* Align text left for pro look */
-}
-
-.brand-section h1 {
-  font-size: 3.5rem;
-  font-weight: 800;
-  margin-bottom: 16px;
-  letter-spacing: -1px;
-  background: linear-gradient(to right, #60a5fa, #ffffff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.brand-section > p {
-  font-size: 1.2rem;
-  color: #94a3b8; /* Muted slate */
-  margin-bottom: 40px;
-}
-
-.feature-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  font-size: 1rem;
-  color: #e2e8f0;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.feature-icon {
-  background: rgba(255,255,255,0.1);
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 1rem;
-}
-
-/* --- RIGHT SIDE: FORM (60% Width) --- */
 .auth-right {
-  flex: 1;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
+  width: 100%;
+  max-width: 480px; /* Limits width so it doesn't stretch */
 }
 
-/* Remove the "Card" look - Use the full white space */
 .auth-box {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Deep shadow */
   width: 100%;
-  max-width: 400px;
-  background: transparent;
-  box-shadow: none; /* Removed the floating shadow */
-  padding: 0;
-  animation: fadeIn 0.5s ease-out;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .auth-box h2 {
   font-size: 2rem;
   font-weight: 700;
   color: var(--accent);
-  margin-bottom: 8px;
-  text-align: left;
+  margin-bottom: 10px;
+  text-align: center;
 }
 
 .auth-subtitle {
+  text-align: center;
   color: var(--text-muted);
-  margin-bottom: 32px;
-  text-align: left;
+  margin-bottom: 30px;
 }
 
-/* Clean Inputs */
+/* Form Styles */
 .form-group {
   margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-main);
   margin-bottom: 8px;
 }
 
-.form-group input,
-.form-group select {
+.form-group input {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   font-size: 1rem;
-  color: var(--text-main);
-  background: white;
   transition: all 0.2s;
 }
 
-.form-group input:focus,
-.form-group select:focus {
+.form-group input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -187,7 +130,7 @@ body {
   background: var(--primary);
   color: white;
   border: none;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -202,7 +145,7 @@ body {
 .auth-footer {
   margin-top: 24px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--text-muted);
 }
 
@@ -211,100 +154,95 @@ body {
   font-weight: 600;
   text-decoration: none;
 }
-.auth-link:hover {
-  text-decoration: underline;
-}
-
-/* Terms checkbox layout */
-.terms-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-bottom: 24px;
-  cursor: pointer;
-}
-.terms-checkbox input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--primary);
-}
 
 /* =========================================
-   3. MOBILE RESPONSIVENESS
-   ========================================= */
-@media (max-width: 900px) {
-  .auth-left {
-    display: none; /* Hide brand side on mobile */
-  }
-  .auth-right {
-    width: 100%;
-    padding: 20px;
-  }
-}
-
-/* =========================================
-   4. DASHBOARD STYLES
+   3. DASHBOARD (Professional Colors)
    ========================================= */
 .dashboard-container {
+  /* This light blue-grey background makes white cards pop */
+  background-color: #f1f5f9; 
+  min-height: 100vh;
   padding: 30px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .dashboard-header {
+  background: white;
+  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  border: 1px solid #e2e8f0;
 }
 
 .header-title {
-  font-size: 2rem;
-  color: var(--accent);
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--accent); /* Dark Slate */
 }
 
 .header-subtitle {
   color: var(--text-muted);
 }
 
-.search-filter-section {
+/* Filter Section */
+.filter-section {
   background: white;
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 30px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-/* Vehicle Grid */
+.filter-group label {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.filter-group select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+/* Vehicle Cards */
 .vehicles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 24px;
 }
 
 .vehicle-card {
   background: white;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #e2e8f0;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .vehicle-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  border-color: #cbd5e1;
 }
 
 .vehicle-image-wrapper {
-  height: 200px;
+  height: 220px;
   position: relative;
-  background: #f1f5f9;
+  background: #cbd5e1;
 }
 
 .vehicle-image {
@@ -315,105 +253,214 @@ body {
 
 .vehicle-type-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 15px;
+  right: 15px;
   background: rgba(15, 23, 42, 0.9);
   color: white;
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(4px);
 }
 
 .card-content {
-  padding: 20px;
+  padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header h3 {
+  font-size: 1.25rem;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 5px;
 }
 
 .vehicle-price {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.4rem;
   color: var(--primary);
-  margin: 10px 0 15px 0;
-}
-
-.owner-info-card {
-  background: #f8fafc;
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
+  font-weight: 700;
   margin-bottom: 15px;
 }
 
+/* Owner Info Box */
+.owner-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
 .owner-info-card p {
-  font-size: 0.85rem;
   color: var(--text-muted);
+  font-size: 0.9rem;
   margin: 4px 0;
+}
+
+.owner-info-card strong {
+  color: var(--text-main);
+}
+
+/* Card Buttons */
+.card-footer {
+  margin-top: auto;
 }
 
 .rent-btn {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   background: var(--primary);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+.rent-btn:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+}
+
+/* Header Buttons */
+.add-car-btn {
+  background: var(--accent);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.rent-btn:hover {
-  background: var(--primary-hover);
-}
-
-/* Header Buttons */
-.add-car-btn, .switch-mode-btn {
-  background: var(--accent);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
+.add-car-btn:hover {
+  background: #0f172a;
 }
 
 .logout-btn {
   background: white;
   color: var(--danger);
-  border: 1px solid var(--border);
+  border: 1px solid #fee2e2;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
+  margin-left: 10px;
 }
+
 .logout-btn:hover {
   background: #fef2f2;
   border-color: var(--danger);
 }
 
-/* Modals */
+/* =========================================
+   4. MODALS (Popups)
+   ========================================= */
 .modal-overlay {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(4px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.7); /* Dark overlay */
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .booking-modal, .add-car-form-container {
   background: white;
+  width: 100%;
+  max-width: 500px;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-vehicle-card {
-  background: var(--accent);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  padding: 24px;
   color: white;
-  padding: 20px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
 }
 
 .modal-vehicle-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
   border: 2px solid rgba(255,255,255,0.2);
 }
 
-/* Delete Button */
+.modal-vehicle-details h2 {
+  font-size: 1.2rem;
+  margin-bottom: 5px;
+}
+
+.booking-form, .add-car-form {
+  padding: 30px;
+}
+
+/* Form Inputs inside Modal */
+.booking-form input, .booking-form select,
+.add-car-form input, .add-car-form select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  background: #f8fafc;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  padding: 20px 30px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.confirm-btn, .submit-btn {
+  flex: 1;
+  background: var(--success);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.confirm-btn:hover { background: #059669; }
+
+.cancel-btn {
+  flex: 1;
+  background: white;
+  color: var(--text-muted);
+  border: 1px solid #cbd5e1;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cancel-btn:hover { background: #e2e8f0; }
+
+/* Close X buttons */
 .delete-cross-btn {
   position: absolute;
   top: 10px;
@@ -422,21 +469,14 @@ body {
   height: 30px;
   background: var(--danger);
   color: white;
-  border-radius: 50%;
   border: none;
+  border-radius: 50%;
+  font-size: 1.2rem;
   cursor: pointer;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  z-index: 10;
+  padding-bottom: 2px;
 }
-.delete-cross-btn:hover {
-  transform: scale(1.1);
-  background: #dc2626;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.delete-cross-btn:hover { transform: scale(1.1); background: #dc2626; }
