@@ -18,6 +18,8 @@ const AVAILABLE_LOCATIONS = [
   { value: 'H3/4', label: 'H3/4' },
 ];
 
+const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Bike'];
+
 function Dashboard() {
   const navigate = useNavigate();
   const [vehicleList, setVehicleList] = useState([]);
@@ -32,10 +34,17 @@ function Dashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   
+  // --- NEW: Search Filters State ---
+  const [filters, setFilters] = useState({
+    type: 'All Types',
+    hours: 1
+  });
+
   const [newCar, setNewCar] = useState({
     name: '',
     type: 'Sedan',
     pricePerHour: '',
+    maxDuration: '', // --- NEW: Max duration field
     features: [],
     location: 'FME',
     image: null,
@@ -67,20 +76,14 @@ function Dashboard() {
       setError('');
       
       const vehicleUrl = `${API_URL}/vehicles`;
-      console.log('Using API_URL:', API_URL);
-      console.log('Fetching vehicles from:', vehicleUrl);
-      
       const response = await fetch(vehicleUrl);
-      console.log('Response status:', response.status);
       
       if (!response.ok) {
-        console.error('API response not ok. Status:', response.status);
         const data = await response.json();
         throw new Error(data.error || `Failed to load vehicles (${response.status})`);
       }
       
       const data = await response.json();
-      console.log('Vehicles fetched successfully:', data);
       setVehicleList(data);
     } catch (err) {
       console.error('Error fetching vehicles:', err);
@@ -92,17 +95,43 @@ function Dashboard() {
   };
 
   const handleBookClick = (vehicle) => {
+    // Pre-fill the hours from the filter if the user selected them
+    setBookingData(prev => ({ ...prev, hours: filters.hours }));
     setSelectedVehicle(vehicle);
-    setTotalCost(vehicle.pricePerHour * 1);
+    setTotalCost(vehicle.pricePerHour * filters.hours);
   };
 
   const handleHoursChange = (e) => {
     const hours = parseInt(e.target.value);
+    
+    // Check if the selected vehicle supports this duration
+    if (selectedVehicle.maxDuration && hours > selectedVehicle.maxDuration) {
+      alert(`This vehicle can only be rented for a maximum of ${selectedVehicle.maxDuration} hours.`);
+      return;
+    }
+
     setBookingData({ ...bookingData, hours });
     if (selectedVehicle) {
       setTotalCost(selectedVehicle.pricePerHour * hours);
     }
   };
+
+  // --- NEW: Filter Logic ---
+  // 1. Filter by Type
+  // 2. Filter by Max Duration (Show cars that can handle the requested hours)
+  // 3. Sort by Price (Low to High) - "Best for them" logic
+  const filteredVehicles = vehicleList
+    .filter(vehicle => {
+      // Type Filter
+      const typeMatch = filters.type === 'All Types' || vehicle.type === filters.type;
+      
+      // Duration Filter (If vehicle has a max limit, ensure it's >= requested hours)
+      // If vehicle.maxDuration is undefined/null/0, we assume it's unlimited (or 24h)
+      const durationMatch = !vehicle.maxDuration || vehicle.maxDuration >= filters.hours;
+
+      return typeMatch && durationMatch;
+    })
+    .sort((a, b) => a.pricePerHour - b.pricePerHour); // Sort Cheapest First
 
   const confirmBooking = async (e) => {
     e.preventDefault();
@@ -137,13 +166,12 @@ function Dashboard() {
         throw new Error(data.error || 'Booking failed');
       }
 
-      alert(`Booking Confirmed!\n\nVehicle: ${selectedVehicle.name}\nDuration: ${bookingData.hours} hour(s)\nLocation: ${selectedVehicle.location}\nTotal Cost: PKR ${totalCost.toLocaleString()}`);
+      alert(`Booking Confirmed!\n\nVehicle: ${selectedVehicle.name}\nDuration: ${bookingData.hours} hour(s)\nTotal Cost: PKR ${totalCost.toLocaleString()}`);
       setSelectedVehicle(null);
       setBookingData({ hours: 1, location: '', phone: '', regNo: '' });
       setTotalCost(0);
     } catch (err) {
       alert(`Booking Error: ${err.message}`);
-      console.error('Booking error:', err);
     }
   };
 
@@ -180,7 +208,7 @@ function Dashboard() {
     e.preventDefault();
     
     if (!newCar.name || !newCar.pricePerHour || !newCar.image || !newCar.phone || !newCar.regNo) {
-      alert('Please fill in all required fields including phone and registration number');
+      alert('Please fill in all required fields');
       return;
     }
 
@@ -197,6 +225,7 @@ function Dashboard() {
           name: newCar.name,
           type: newCar.type,
           pricePerHour: parseInt(newCar.pricePerHour),
+          maxDuration: parseInt(newCar.maxDuration) || 24, // --- NEW: Send max duration
           features: newCar.features,
           location: newCar.location,
           image: newCar.image,
@@ -217,6 +246,7 @@ function Dashboard() {
         name: '',
         type: 'Sedan',
         pricePerHour: '',
+        maxDuration: '',
         features: [],
         location: 'FME',
         image: null,
@@ -226,11 +256,10 @@ function Dashboard() {
       setImagePreview(null);
       setShowAddCarForm(false);
       
-      setSuccessMessage('vehicle added successfully! 🎉');
+      setSuccessMessage('Vehicle added successfully! 🎉');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error adding car: ${err.message}`);
-      console.error('Add vehicle error:', err);
     }
   };
 
@@ -257,7 +286,6 @@ function Dashboard() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error deleting car: ${err.message}`);
-      console.error('Delete error:', err);
     }
   };
 
@@ -267,6 +295,7 @@ function Dashboard() {
       name: vehicle.name,
       type: vehicle.type,
       pricePerHour: vehicle.pricePerHour,
+      maxDuration: vehicle.maxDuration || '', // Load existing duration
       features: vehicle.features,
       location: vehicle.location,
       image: vehicle.image,
@@ -280,11 +309,6 @@ function Dashboard() {
   const handleUpdateCar = async (e) => {
     e.preventDefault();
     
-    if (!newCar.name || !newCar.pricePerHour) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
     try {
       const token = localStorage.getItem('token');
       
@@ -298,6 +322,7 @@ function Dashboard() {
           name: newCar.name,
           type: newCar.type,
           pricePerHour: parseInt(newCar.pricePerHour),
+          maxDuration: parseInt(newCar.maxDuration) || 24, // Update duration
           features: newCar.features,
           location: newCar.location,
           image: newCar.image,
@@ -318,6 +343,7 @@ function Dashboard() {
         name: '',
         type: 'Sedan',
         pricePerHour: '',
+        maxDuration: '',
         features: [],
         location: 'FME',
         image: null,
@@ -332,7 +358,6 @@ function Dashboard() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error updating car: ${err.message}`);
-      console.error('Update error:', err);
     }
   };
 
@@ -358,9 +383,9 @@ function Dashboard() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error updating car: ${err.message}`);
-      console.error('Update error:', err);
     }
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -373,6 +398,7 @@ function Dashboard() {
       name: '',
       type: 'Sedan',
       pricePerHour: '',
+      maxDuration: '',
       features: [],
       location: 'FME',
       image: null,
@@ -383,7 +409,6 @@ function Dashboard() {
     setShowAddCarForm(false);
   };
 
-  // Find cars owned by the current user (handle both string and object for owner)
   const myCars = currentUser ? vehicleList.filter(v => {
     if (!v.owner || !currentUser._id) return false;
     if (typeof v.owner === 'string') return v.owner === currentUser._id;
@@ -391,7 +416,6 @@ function Dashboard() {
     return false;
   }) : [];
 
-  // State for remove dialog
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [selectedRemoveCar, setSelectedRemoveCar] = useState('');
 
@@ -420,7 +444,54 @@ function Dashboard() {
           <button className="logout-btn" onClick={handleLogout}>Logout</button>
         </div>
       </div>
-      {/* Remove Listing Dialog */}
+
+      {/* --- NEW: Smart Filter Section --- */}
+      <div className="filter-section" style={{ 
+        backgroundColor: '#fff', 
+        padding: '20px', 
+        borderRadius: '12px', 
+        margin: '20px auto', 
+        maxWidth: '1200px',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <h3 style={{ margin: 0, color: '#333' }}>🔎 Find Your Perfect Ride:</h3>
+        
+        <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontWeight: '500', color: '#666' }}>Type:</label>
+          <select 
+            value={filters.type} 
+            onChange={(e) => setFilters({...filters, type: e.target.value})}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
+          >
+            {VEHICLE_TYPES.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontWeight: '500', color: '#666' }}>Duration Needed:</label>
+          <select 
+            value={filters.hours} 
+            onChange={(e) => setFilters({...filters, hours: parseInt(e.target.value)})}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
+          >
+            {[1, 2, 3, 4, 6, 8, 12, 24].map(hr => (
+              <option key={hr} value={hr}>{hr} Hour{hr > 1 ? 's' : ''}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div style={{ marginLeft: 'auto', fontSize: '14px', color: '#888' }}>
+          Showing <strong>{filteredVehicles.length}</strong> vehicles (Sorted by Price)
+        </div>
+      </div>
+      {/* ----------------------------- */}
+
       {showRemoveDialog && (
         <div className="modal-overlay" onClick={() => setShowRemoveDialog(false)}>
           <div className="remove-listing-modal" onClick={e => e.stopPropagation()}>
@@ -479,12 +550,9 @@ function Dashboard() {
                   value={newCar.type}
                   onChange={(e) => setNewCar({ ...newCar, type: e.target.value })}
                 >
-                  <option>Sedan</option>
-                  <option>SUV</option>
-                  <option>Hatchback</option>
-                  <option>Coupe</option>
-                  <option>Truck</option>
-                  <option>Bike</option>
+                  {VEHICLE_TYPES.filter(t => t !== 'All Types').map(type => (
+                     <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -500,6 +568,21 @@ function Dashboard() {
                   required
                 />
               </div>
+              
+              {/* --- NEW: Max Duration Input --- */}
+              <div className="form-group">
+                <label>Max Rental Duration (Hours)</label>
+                <input
+                  type="number"
+                  value={newCar.maxDuration}
+                  onChange={(e) => setNewCar({ ...newCar, maxDuration: e.target.value })}
+                  placeholder="e.g., 5 (Leave blank for 24h)"
+                />
+                <small style={{color: '#666', fontSize: '11px'}}>Limit how long someone can rent your car</small>
+              </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label>Your Phone Number *</label>
                 <input
@@ -510,9 +593,6 @@ function Dashboard() {
                   required
                 />
               </div>
-            </div>
-
-            <div className="form-row">
               <div className="form-group">
                 <label>Your Registration Number *</label>
                 <input
@@ -523,19 +603,20 @@ function Dashboard() {
                   required
                 />
               </div>
-              <div className="form-group">
-                <label>Location</label>
-                <select
-                  value={newCar.location}
-                  onChange={(e) => setNewCar({ ...newCar, location: e.target.value })}
-                >
-                  {AVAILABLE_LOCATIONS.map((loc) => (
-                    <option key={loc.value} value={loc.value}>
-                      {loc.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Location</label>
+              <select
+                value={newCar.location}
+                onChange={(e) => setNewCar({ ...newCar, location: e.target.value })}
+              >
+                {AVAILABLE_LOCATIONS.map((loc) => (
+                  <option key={loc.value} value={loc.value}>
+                    {loc.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -544,7 +625,7 @@ function Dashboard() {
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                required
+                required={!editingCar} 
               />
               {imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}
             </div>
@@ -556,7 +637,7 @@ function Dashboard() {
                   type="text"
                   value={featureInput}
                   onChange={(e) => setFeatureInput(e.target.value)}
-                  placeholder="e.g., AC, Power Steering, ABS"
+                  placeholder="e.g., AC, Power Steering"
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
                 />
                 <button type="button" onClick={handleAddFeature}>Add Feature</button>
@@ -578,7 +659,7 @@ function Dashboard() {
             </div>
 
             <button type="submit" className="submit-btn">
-              {editingCar ? '💾 Update  vehicle' : '➕ Add vehicle'}
+              {editingCar ? '💾 Update vehicle' : '➕ Add vehicle'}
             </button>
           </form>
         </div>
@@ -591,23 +672,24 @@ function Dashboard() {
           <div className="loading-spinner">
             <p className="loading">Loading vehicles...</p>
           </div>
-        ) : vehicleList.length === 0 ? (
-          <p className="no-vehicles">No vehicles available yet. Be the first to add one!</p>
+        ) : filteredVehicles.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+            <h3>No vehicles found matching your criteria.</h3>
+            <p>Try changing the vehicle type or reducing the duration.</p>
+          </div>
         ) : (
           <div className="vehicles-grid">
-            {vehicleList.map((vehicle) => {
-              // Robust check for ownership
-             const isOwnCar =
-  vehicle.owner === currentUser?._id ||
-  vehicle.owner?._id === currentUser?._id ||
-  vehicle.ownerPhone === currentUser?.phone;
+            {filteredVehicles.map((vehicle) => {
+              const isOwnCar =
+                vehicle.owner === currentUser?._id ||
+                vehicle.owner?._id === currentUser?._id ||
+                vehicle.ownerPhone === currentUser?.phone;
 
               return (
                 <div key={vehicle._id} className="vehicle-card">
                   <div className="vehicle-image-wrapper">
                     <img src={vehicle.image} alt={vehicle.name} className="vehicle-image" />
                     <span className="vehicle-type-badge">{vehicle.type}</span>
-                    {/* Show delete cross for owner's cars */}
                     {isOwnCar && (
                       <button
                         className="delete-cross-btn"
@@ -629,22 +711,20 @@ function Dashboard() {
                     
                     <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()}/hour</p>
                     
-                    <div className="owner-info-card">
-<p>
-  <strong>Owner:</strong>{' '}
-  {vehicle.owner?.fullName || 'You'}
-</p>
-                      <p><strong>📞</strong> {vehicle.ownerPhone}</p>
-                      <p><strong>🏷️</strong> {vehicle.ownerRegNo}</p>
-                    </div>
-
-                    {vehicle.features && vehicle.features.length > 0 && (
-                      <div className="features-container">
-                        {vehicle.features.map((feature, idx) => (
-                          <span key={idx} className="feature-badge">{feature}</span>
-                        ))}
+                    {/* --- NEW: Show Max Duration badge --- */}
+                    {vehicle.maxDuration && vehicle.maxDuration < 24 && (
+                      <div style={{ fontSize: '12px', color: '#d32f2f', fontWeight: 'bold', marginBottom: '5px' }}>
+                        ⏱️ Max Duration: {vehicle.maxDuration}h
                       </div>
                     )}
+
+                    <div className="owner-info-card">
+                      <p>
+                        <strong>Owner:</strong>{' '}
+                        {vehicle.owner?.fullName || 'You'}
+                      </p>
+                      <p><strong>📞</strong> {vehicle.ownerPhone}</p>
+                    </div>
 
                     <div className="card-footer">
                       {isOwnCar ? (
@@ -665,12 +745,6 @@ function Dashboard() {
                                 📋 Available
                               </button>
                             )}
-                            <button 
-                              className="delete-car-btn"
-                              onClick={() => handleDeleteCar(vehicle._id)}
-                            >
-                              🗑️ Remove
-                            </button>
                           </div>
                         </div>
                       ) : !vehicle.isAvailable ? (
@@ -707,6 +781,9 @@ function Dashboard() {
                 <h2>{selectedVehicle.name}</h2>
                 <p className="modal-vehicle-type">{selectedVehicle.type}</p>
                 <p className="modal-vehicle-price">PKR {selectedVehicle.pricePerHour.toLocaleString()}/hour</p>
+                {selectedVehicle.maxDuration && (
+                   <p style={{color: '#d32f2f', fontSize: '13px'}}>⚠️ Limit: {selectedVehicle.maxDuration} hours max</p>
+                )}
               </div>
             </div>
 
@@ -718,8 +795,12 @@ function Dashboard() {
                   <label>Duration (hours) *</label>
                   <select value={bookingData.hours} onChange={handleHoursChange} required>
                     {[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (
-                      <option key={hr} value={hr}>
-                        {hr} hour{hr > 1 ? 's' : ''}
+                      <option 
+                        key={hr} 
+                        value={hr}
+                        disabled={selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration}
+                      >
+                        {hr} hour{hr > 1 ? 's' : ''} {selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration ? '(Over Limit)' : ''}
                       </option>
                     ))}
                   </select>
@@ -768,10 +849,6 @@ function Dashboard() {
                   <span>Duration:</span>
                   <strong>{bookingData.hours} hour{bookingData.hours > 1 ? 's' : ''}</strong>
                 </div>
-                <div className="summary-row">
-                  <span>Rate:</span>
-                  <strong>PKR {selectedVehicle.pricePerHour.toLocaleString()}/hour</strong>
-                </div>
                 <div className="summary-row total">
                   <span>Total Cost:</span>
                   <strong>PKR {totalCost.toLocaleString()}</strong>
@@ -795,7 +872,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-
-
-
-
