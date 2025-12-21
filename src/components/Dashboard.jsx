@@ -18,7 +18,7 @@ const AVAILABLE_LOCATIONS = [
   { value: 'H3/4', label: 'H3/4' },
 ];
 
-const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Bike'];
+const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Bike'];
 
 function Dashboard() {
   const navigate = useNavigate();
