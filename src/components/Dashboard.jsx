@@ -18,7 +18,7 @@ const AVAILABLE_LOCATIONS = [
   { value: 'H3/4', label: 'H3/4' },
 ];
 
-const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Bike'];
+const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Cycle', 'Bike'];
 
 // --- HELPER: Image Compression ---
 const compressImage = (file) => {
@@ -44,10 +44,18 @@ const compressImage = (file) => {
   });
 };
 
-// --- HELPER: Phone Validation (11 Digits) ---
+// --- VALIDATION HELPERS ---
+
+// 1. Phone: Must be 11 digits and start with 03 (Pakistani Format)
 const isValidPhone = (phone) => {
-  const phoneRegex = /^\d{11}$/; // Matches exactly 11 digits
+  const phoneRegex = /^03\d{9}$/; 
   return phoneRegex.test(phone);
+};
+
+// 2. Reg No: Must start with 2022, 2023, 2024, or 2025 and be 7 digits total
+const isValidRegNo = (regNo) => {
+  const regRegex = /^(2022|2023|2024|2025)\d{3}$/;
+  return regRegex.test(regNo);
 };
 
 function Dashboard() {
@@ -55,24 +63,24 @@ function Dashboard() {
   const [vehicleList, setVehicleList] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   
-  // Booking Data State
+  // Booking Data State (Now includes CNIC)
   const [bookingData, setBookingData] = useState({ 
     hours: 1, 
     seats: 1, 
     location: '', 
     phone: '', 
     regNo: '',
-    paymentMethod: 'Cash'
+    paymentMethod: 'Cash',
+    cnicImage: null // New Field
   });
 
-  // --- NEW: Track Booking Status for UI ---
-  // 'idle' | 'submitting' | 'success'
   const [bookingStatus, setBookingStatus] = useState('idle');
   
   const [totalCost, setTotalCost] = useState(0);
   const [showAddCarForm, setShowAddCarForm] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [cnicPreview, setCnicPreview] = useState(null); // Preview for Booking CNIC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -123,8 +131,9 @@ function Dashboard() {
 
   const handleCloseModal = () => {
     setSelectedVehicle(null);
-    setBookingStatus('idle'); // Reset status when closing
-    setBookingData({ hours: 1, seats: 1, location: '', phone: '', regNo: '', paymentMethod: 'Cash' });
+    setBookingStatus('idle'); 
+    setBookingData({ hours: 1, seats: 1, location: '', phone: '', regNo: '', paymentMethod: 'Cash', cnicImage: null });
+    setCnicPreview(null);
   };
 
   const fetchVehicles = async () => {
@@ -151,7 +160,7 @@ function Dashboard() {
   const handleBookClick = (vehicle) => {
     setBookingData(prev => ({ ...prev, hours: filters.hours, seats: 1, paymentMethod: 'Cash' }));
     setSelectedVehicle(vehicle);
-    setBookingStatus('idle'); // Ensure clean state
+    setBookingStatus('idle'); 
     if (vehicle.isShared) {
       setTotalCost(vehicle.pricePerSeat * 1);
     } else {
@@ -185,21 +194,49 @@ function Dashboard() {
       return priceA - priceB;
     });
 
+  // --- NEW: Handle CNIC Upload for Booking ---
+  const handleCNICUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const compressedImage = await compressImage(file);
+        setCnicPreview(compressedImage);
+        setBookingData({ ...bookingData, cnicImage: compressedImage });
+      } catch (err) {
+        alert("Failed to process CNIC image.");
+      }
+    }
+  };
+
   const confirmBooking = async (e) => {
     e.preventDefault();
 
+    // 1. Basic Fields Check
     if (!bookingData.phone || !bookingData.regNo) {
       alert('Please enter your phone number and registration number');
       return;
     }
 
+    // 2. Validate Phone
     if (!isValidPhone(bookingData.phone)) {
-        alert('❌ Invalid Phone Number!\n\nPlease enter a valid 11-digit mobile number (e.g., 03001234567).');
+        alert('❌ Invalid Phone Number!\n\nPlease enter a valid 11-digit Pakistani mobile number (e.g., 03001234567).');
+        return;
+    }
+
+    // 3. Validate Reg No (Batch 2022-2025)
+    if (!isValidRegNo(bookingData.regNo)) {
+        alert('❌ Invalid Registration Number!\n\nOnly students from batches 2022, 2023, 2024, and 2025 are allowed.\nFormat Example: 2023546');
+        return;
+    }
+
+    // 4. Validate CNIC Upload
+    if (!bookingData.cnicImage) {
+        alert('❌ CNIC Required!\n\nPlease upload a photo of your CNIC to proceed with the booking.');
         return;
     }
 
     try {
-      setBookingStatus('submitting'); // Show loading state
+      setBookingStatus('submitting');
       const token = localStorage.getItem('token');
       
       const response = await fetch(`${API_URL}/bookings`, {
@@ -217,6 +254,7 @@ function Dashboard() {
           phone: bookingData.phone,
           regNo: bookingData.regNo,
           paymentMethod: bookingData.paymentMethod,
+          cnicImage: bookingData.cnicImage, // Sending CNIC
           status: 'pending'
         }),
       });
@@ -227,9 +265,8 @@ function Dashboard() {
         throw new Error(data.error || 'Booking failed');
       }
 
-      // --- SUCCESS: Switch UI to Success View (Don't open window yet) ---
       setBookingStatus('success'); 
-      fetchVehicles(); // Refresh background data
+      fetchVehicles();
       
     } catch (err) {
       alert(`Booking Error: ${err.message}`);
@@ -237,25 +274,18 @@ function Dashboard() {
     }
   };
 
-  // --- NEW FUNCTION: Open WhatsApp (With robust phone handling) ---
   const openWhatsApp = () => {
     let ownerPhone = selectedVehicle.ownerPhone || "";
-    
-    // 1. Remove any non-digit characters (dashes, spaces, parens)
-    ownerPhone = ownerPhone.replace(/\D/g, '');
-
-    // 2. Format local '03' numbers to international '923'
+    ownerPhone = ownerPhone.replace(/\D/g, ''); // Remove non-digits
     if (ownerPhone.startsWith('0')) {
         ownerPhone = '92' + ownerPhone.substring(1);
     }
-
-    const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please Respond asap! My Phone: ${bookingData.phone}`;
+    const message = `Hey! I requested your vehicle (${selectedVehicle.name}) on GearGIK. My Phone: ${bookingData.phone}, Reg: ${bookingData.regNo}`;
     const waLink = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
-    
-    // 3. Open Window (Browser allows this because it's inside a click handler)
     window.open(waLink, '_blank');
   };
 
+  // --- Image Upload for Adding Car ---
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -265,7 +295,7 @@ function Dashboard() {
         setNewCar({ ...newCar, image: compressedImage });
       } catch (err) {
         console.error("Image processing error:", err);
-        alert("Failed to process image. Please try another one.");
+        alert("Failed to process image.");
       }
     }
   };
@@ -281,6 +311,7 @@ function Dashboard() {
     setNewCar({ ...newCar, features: newCar.features.filter((_, i) => i !== idx) });
   };
 
+  // --- ADD CAR LOGIC (With new Validations) ---
   const handleAddCar = async (e) => {
     e.preventDefault();
     if (!newCar.name || !newCar.image || !newCar.phone || !newCar.regNo) {
@@ -288,9 +319,15 @@ function Dashboard() {
       return;
     }
     
-    // --- VALIDATION: Check Phone on Add Car ---
+    // Validate Phone
     if (!isValidPhone(newCar.phone)) {
-        alert('❌ Invalid Phone Number!\n\nPlease enter a valid 11-digit mobile number (e.g., 03001234567).');
+        alert('❌ Invalid Phone Number!\nUse format: 03001234567');
+        return;
+    }
+
+    // Validate Reg No
+    if (!isValidRegNo(newCar.regNo)) {
+        alert('❌ Invalid Registration Number!\nOnly batches 2022-2025 allowed (e.g. 2023546)');
         return;
     }
 
@@ -537,8 +574,8 @@ function Dashboard() {
             </div>
 
             <div className="form-row">
-              <div className="form-group"><label>Your Phone *</label><input type="text" value={newCar.phone} onChange={(e) => setNewCar({ ...newCar, phone: e.target.value })} required /></div>
-              <div className="form-group"><label>Reg Number *</label><input type="text" value={newCar.regNo} onChange={(e) => setNewCar({ ...newCar, regNo: e.target.value })} required /></div>
+              <div className="form-group"><label>Your Phone *</label><input type="text" value={newCar.phone} onChange={(e) => setNewCar({ ...newCar, phone: e.target.value })} placeholder="03001234567" required /></div>
+              <div className="form-group"><label>Reg Number *</label><input type="text" value={newCar.regNo} onChange={(e) => setNewCar({ ...newCar, regNo: e.target.value })} placeholder="2023546" required /></div>
             </div>
             <div className="form-group"><label>Location</label><select value={newCar.location} onChange={(e) => setNewCar({ ...newCar, location: e.target.value })}>{AVAILABLE_LOCATIONS.map((loc) => <option key={loc.value} value={loc.value}>{loc.label}</option>)}</select></div>
             <div className="form-group"><label>Car Image *</label><input type="file" accept="image/*" onChange={handleImageUpload} required={!editingCar} />{imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}</div>
@@ -660,11 +697,11 @@ function Dashboard() {
                         </div>
 
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})} style={{ border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://icon2.cleanpng.com/lnd/20250110/ip/d0ad8bb55bc068ecf2058516429406.webp" alt="JazzCash" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }} /><strong>JazzCash</strong>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/JazzCash_logo.png/320px-JazzCash_logo.png" alt="JazzCash" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }} /><strong>JazzCash</strong>
                         </div>
 
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})} style={{ border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://img.favpng.com/24/17/11/easypaisa-logo-easypaisa-logo-in-green-and-black-EjCnPTZb_t.jpg" alt="EasyPaisa" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }} /><strong>EasyPaisa</strong>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Easypaisa_logo.png/320px-Easypaisa_logo.png" alt="EasyPaisa" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }} /><strong>EasyPaisa</strong>
                         </div>
 
                     </div>
@@ -673,8 +710,15 @@ function Dashboard() {
 
                   <div className="booking-section">
                     <h3>Your Information</h3>
-                    <div className="form-group"><label>Phone *</label><input type="text" value={bookingData.phone} onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })} required /></div>
-                    <div className="form-group"><label>Registration No *</label><input type="text" value={bookingData.regNo} onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })} required /></div>
+                    <div className="form-group"><label>Phone *</label><input type="text" value={bookingData.phone} onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })} placeholder="03001234567" required /></div>
+                    <div className="form-group"><label>Registration No *</label><input type="text" value={bookingData.regNo} onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })} placeholder="2023546" required /></div>
+                    
+                    {/* --- NEW: CNIC UPLOAD FIELD --- */}
+                    <div className="form-group">
+                        <label>Upload CNIC (Required for Safety) *</label>
+                        <input type="file" accept="image/*" onChange={handleCNICUpload} required />
+                        {cnicPreview && <img src={cnicPreview} alt="CNIC Preview" style={{width: '100%', maxHeight: '150px', objectFit: 'contain', marginTop: '10px', border: '1px solid #ddd', borderRadius: '8px'}} />}
+                    </div>
                   </div>
 
                   <div className="booking-summary-compact">
