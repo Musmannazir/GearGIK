@@ -2556,3 +2556,106 @@ html, body, #root {
     margin: 0 auto 25px;
   }
 }
+/* =========================================
+   📱 MOBILE APP OPTIMIZATIONS
+   Paste this at the VERY BOTTOM of App.css
+   ========================================= */
+
+@media (max-width: 768px) {
+  
+  /* 1. Stack the Navbar on Home Page */
+  .navbar {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+    background: #0f172a; /* Solid background for readability */
+    position: relative;
+  }
+
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* 2. Dashboard Header Stacking */
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    gap: 15px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .header-actions button {
+    width: 100%; /* Full width buttons */
+    padding: 14px; /* Taller touch targets */
+  }
+
+  /* 3. Filter Section Stacking */
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch; /* Stretch to full width */
+    gap: 15px;
+  }
+
+  .filter-section > div {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* 4. Vehicle Cards */
+  .vehicles-grid {
+    grid-template-columns: 1fr; /* Single column */
+    padding-bottom: 80px; /* Space for scrolling */
+  }
+
+  .vehicle-image-wrapper {
+    height: 200px; /* Slightly shorter on mobile */
+  }
+
+  /* 5. Mobile Modals (Bottom Sheet Style) */
+  .booking-modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0; /* Rounded top only */
+    max-height: 90vh; /* 90% of screen height */
+    margin: 0;
+    animation: slideUpMobile 0.3s ease-out;
+  }
+
+  @keyframes slideUpMobile {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-overlay {
+    align-items: flex-end; /* Align to bottom */
+    padding: 0;
+  }
+
+  /* 6. Form Inputs (Prevent iPhone Zoom) */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS */
+  }
+
+  /* 7. Footer adjustments */
+  .footer-content {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 30px;
+  }
+
+  .contact-info, .social-icons, .footer-links {
+    align-items: center;
+    justify-content: center;
+  }
+}
