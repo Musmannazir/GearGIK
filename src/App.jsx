@@ -7,6 +7,7 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 import OwnerDashboard from './components/OwnerDashboard';
+import AdminDashboard from './components/AdminDashboard';
 import './App.css';
 
 // --- SECURITY: Protect Dashboard Routes ---
@@ -24,6 +25,7 @@ function App() {
         <Route path="/" element={<Home />} />          {/* Landing Page */}
         <Route path="/login" element={<Login />} />    {/* Login Page */}
         <Route path="/signup" element={<Signup />} />  {/* Signup Page */}
+        <Route path="/admin" element={<AdminDashboard />} /> {/* Admin Dashboard */}
 
         {/* --- Protected Routes (Only for logged in users) --- */}
         <Route 
