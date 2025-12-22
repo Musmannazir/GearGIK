@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa'; 
-import { FcGoogle } from 'react-icons/fc'; 
 import { MdErrorOutline } from 'react-icons/md'; 
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
@@ -88,9 +87,6 @@ function Signup() {
     }
   };
 
-  const handleGoogleSignup = () => {
-    window.location.href = `${API_URL}/auth/google`; 
-  };
 
   return (
     <div className="auth-container">
@@ -192,19 +188,6 @@ function Signup() {
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
-
-            <div className="divider">
-                <span>OR</span>
-            </div>
-
-            <button 
-                type="button" 
-                className="google-btn" 
-                onClick={handleGoogleSignup}
-            >
-                <FcGoogle size={20} />
-                <span>Continue with Google</span>
-            </button>
 
             <div className="auth-footer">
               <p>Already have an account? <Link to="/">Sign in</Link></p>
