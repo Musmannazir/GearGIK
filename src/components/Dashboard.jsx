@@ -46,14 +46,11 @@ const compressImage = (file) => {
 };
 
 // --- VALIDATION HELPERS ---
-
-// 1. Phone: Must be 11 digits and start with 03 (Pakistani Format)
 const isValidPhone = (phone) => {
   const phoneRegex = /^03\d{9}$/; 
   return phoneRegex.test(phone);
 };
 
-// 2. Reg No: Must start with 2022, 2023, 2024, or 2025 and be 7 digits total
 const isValidRegNo = (regNo) => {
   const regRegex = /^(2020|2021|2022|2023|2024|2025)\d{3}$/;
   return regRegex.test(regNo);
@@ -64,7 +61,7 @@ function Dashboard() {
   const [vehicleList, setVehicleList] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   
-  // Booking Data State (Now includes CNIC)
+  // Booking Data State
   const [bookingData, setBookingData] = useState({ 
     hours: 1, 
     seats: 1, 
@@ -72,20 +69,25 @@ function Dashboard() {
     phone: '', 
     regNo: '',
     paymentMethod: 'Cash',
-    cnicImage: null // New Field
+    cnicImage: null 
   });
 
   const [bookingStatus, setBookingStatus] = useState('idle');
-  
   const [totalCost, setTotalCost] = useState(0);
   const [showAddCarForm, setShowAddCarForm] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [cnicPreview, setCnicPreview] = useState(null); // Preview for Booking CNIC
+  const [cnicPreview, setCnicPreview] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // --- USER LOGIC STATES ---
   const [currentUser, setCurrentUser] = useState(null);
+  const [userDebt, setUserDebt] = useState(0); 
+  const [adsPostedCount, setAdsPostedCount] = useState(0);
+  const [isUserApproved, setIsUserApproved] = useState(false);
+
   const [isSeatSharing, setIsSeatSharing] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -111,10 +113,31 @@ function Dashboard() {
 
   const [featureInput, setFeatureInput] = useState('');
 
+  // 1. Fetch User Data (Important for Fee Logic)
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    setCurrentUser(user);
-  }, []);
+    const fetchUserData = async () => {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const token = localStorage.getItem('token');
+        if (user && token) {
+            setCurrentUser(user);
+            try {
+                // Try to get latest user stats. If endpoint doesn't exist yet, this might fail silently.
+                const res = await fetch(`${API_URL}/users/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if(res.ok) {
+                    const userData = await res.json();
+                    setUserDebt(userData.debt || 0);
+                    setAdsPostedCount(userData.adsPosted || 0);
+                    setIsUserApproved(userData.isApproved || false);
+                }
+            } catch (e) {
+                console.error("Failed to fetch user details", e);
+            }
+        }
+    };
+    fetchUserData();
+  }, [vehicleList]); // Refetch when list changes (e.g. ad added/removed)
 
   useEffect(() => {
     fetchVehicles();
@@ -163,12 +186,9 @@ const handleBookClick = (vehicle) => {
     setSelectedVehicle(vehicle);
     setBookingStatus('idle'); 
     
-    // --- UPDATED LOGIC HERE ---
     if (vehicle.isShared) {
-      // Add + SERVICE_FEE here
       setTotalCost((vehicle.pricePerSeat * 1) + SERVICE_FEE);
     } else {
-      // Add + SERVICE_FEE here
       setTotalCost((vehicle.pricePerHour * filters.hours) + SERVICE_FEE);
     }
   };
@@ -179,14 +199,10 @@ const handleBookingChange = (field, value) => {
     
     if (selectedVehicle) {
       if (selectedVehicle.isShared) {
-        // Calculate new seats count
         const seats = field === 'seats' ? value : bookingData.seats;
-        // --- UPDATED LOGIC HERE ---
         setTotalCost((selectedVehicle.pricePerSeat * seats) + SERVICE_FEE);
       } else {
-        // Calculate new hours count
         const hours = field === 'hours' ? value : bookingData.hours;
-        // --- UPDATED LOGIC HERE ---
         setTotalCost((selectedVehicle.pricePerHour * hours) + SERVICE_FEE);
       }
     }
@@ -204,7 +220,6 @@ const handleBookingChange = (field, value) => {
       return priceA - priceB;
     });
 
-  // --- NEW: Handle CNIC Upload for Booking ---
   const handleCNICUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -221,25 +236,21 @@ const handleBookingChange = (field, value) => {
   const confirmBooking = async (e) => {
     e.preventDefault();
 
-    // 1. Basic Fields Check
     if (!bookingData.phone || !bookingData.regNo) {
       alert('Please enter your phone number and registration number');
       return;
     }
 
-    // 2. Validate Phone
     if (!isValidPhone(bookingData.phone)) {
         alert('❌ Invalid Phone Number!\n\nPlease enter a valid 11-digit Pakistani mobile number (e.g., 03001234567).');
         return;
     }
 
-    // 3. Validate Reg No (Batch 2022-2025)
     if (!isValidRegNo(bookingData.regNo)) {
         alert('❌ Invalid Registration Number!\n\nOnly students from batches 2022, 2023, 2024, and 2025 are allowed.\nFormat Example: 2023546');
         return;
     }
 
-    // 4. Validate CNIC Upload
     if (!bookingData.cnicImage) {
         alert('❌ CNIC Required!\n\nPlease upload a photo of your CNIC to proceed with the booking.');
         return;
@@ -264,7 +275,7 @@ const handleBookingChange = (field, value) => {
           phone: bookingData.phone,
           regNo: bookingData.regNo,
           paymentMethod: bookingData.paymentMethod,
-          cnicImage: bookingData.cnicImage, // Sending CNIC
+          cnicImage: bookingData.cnicImage, 
           status: 'pending',
           totalPrice: totalCost
         }),
@@ -287,7 +298,7 @@ const handleBookingChange = (field, value) => {
 
   const openWhatsApp = () => {
     let ownerPhone = selectedVehicle.ownerPhone || "";
-    ownerPhone = ownerPhone.replace(/\D/g, ''); // Remove non-digits
+    ownerPhone = ownerPhone.replace(/\D/g, ''); 
     if (ownerPhone.startsWith('0')) {
         ownerPhone = '92' + ownerPhone.substring(1);
     }
@@ -296,7 +307,6 @@ const handleBookingChange = (field, value) => {
     window.open(waLink, '_blank');
   };
 
-  // --- Image Upload for Adding Car ---
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -322,7 +332,32 @@ const handleBookingChange = (field, value) => {
     setNewCar({ ...newCar, features: newCar.features.filter((_, i) => i !== idx) });
   };
 
-  // --- ADD CAR LOGIC (With new Validations) ---
+  // --- LOGIC TO CHECK IF USER CAN POST ---
+  const handleAddCarClick = () => {
+    if (editingCar) {
+        handleCancelEdit();
+        return;
+    }
+
+    // 1. Debt Check
+    if (userDebt >= 60) {
+        alert(`⛔ ACTION BLOCKED\n\nYou have accumulated a platform fee of PKR ${userDebt}.\nYou cannot post new ads until you clear your bill.\n\nPlease contact Admin: gikigear123@gmail.com`);
+        return;
+    }
+
+    // 2. Approval Check (3 Ads Limit)
+    if (adsPostedCount >= 3 && !isUserApproved) {
+        if(window.confirm(`⚠️ ACCOUNT LIMIT REACHED\n\nYou have posted 3 ads. You need Admin Approval to post more.\n\nWould you like to request approval?`)) {
+            // Placeholder for backend request
+            alert("Approval request functionality coming soon. Contact Admin.");
+        }
+        return;
+    }
+
+    setShowAddCarForm(!showAddCarForm);
+  };
+
+  // --- ADD CAR LOGIC ---
   const handleAddCar = async (e) => {
     e.preventDefault();
     if (!newCar.name || !newCar.image || !newCar.phone || !newCar.regNo) {
@@ -330,13 +365,11 @@ const handleBookingChange = (field, value) => {
       return;
     }
     
-    // Validate Phone
     if (!isValidPhone(newCar.phone)) {
         alert('❌ Invalid Phone Number!\nUse format: 03001234567');
         return;
     }
 
-    // Validate Reg No
     if (!isValidRegNo(newCar.regNo)) {
         alert('❌ Invalid Registration Number!\nOnly batches 2022-2025 allowed (e.g. 2023546)');
         return;
@@ -368,7 +401,12 @@ const handleBookingChange = (field, value) => {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to add vehicle');
+      
       setVehicleList([data.vehicle, ...vehicleList]);
+      
+      // Update local tracking instantly
+      setAdsPostedCount(prev => prev + 1);
+
       setNewCar({
         name: '', type: 'Sedan', pricePerHour: '', maxDuration: '', isShared: false, pricePerSeat: '',
         routeFrom: '', routeTo: '', features: [], location: 'FME', image: null, phone: '', regNo: '',
@@ -393,6 +431,10 @@ const handleBookingChange = (field, value) => {
       });
       if (!response.ok) throw new Error('Failed to delete vehicle');
       setVehicleList(vehicleList.filter(v => v._id !== vehicleId));
+      
+      // Decrement local count
+      setAdsPostedCount(prev => Math.max(0, prev - 1));
+
       setSuccessMessage('Car removed successfully! 🗑️');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
@@ -489,14 +531,21 @@ const handleBookingChange = (field, value) => {
         <div>
           <h1 className="header-title">GearGIK Dashboard</h1>
           <p className="header-subtitle">Find and book amazing cars near you</p>
+          
+          {/* USER DEBT BADGE */}
+          {currentUser && (
+            <div style={{marginTop: '10px', fontSize: '0.9rem', color: userDebt >= 60 ? 'red' : 'green', fontWeight: 'bold'}}>
+                My Debt: PKR {userDebt} 
+                {userDebt >= 60 && <span style={{marginLeft: '10px', background: 'red', color: 'white', padding: '2px 6px', borderRadius: '4px'}}>PAYMENT DUE</span>}
+            </div>
+          )}
         </div>
         <div className="header-actions">
-          <button className="add-car-btn" onClick={() => {
-            if (editingCar) handleCancelEdit();
-            else setShowAddCarForm(!showAddCarForm);
-          }}>
+          {/* ADD BUTTON WITH LOGIC */}
+          <button className="add-car-btn" onClick={handleAddCarClick}>
             {showAddCarForm ? '✕ Cancel' : '+ Add vehicle'}
           </button>
+          
           {myCars.length > 0 && (
             <button className="remove-listing-btn" onClick={() => setShowRemoveDialog(true)}>
               🗑️ Remove My Listing
@@ -571,17 +620,17 @@ const handleBookingChange = (field, value) => {
 
             <div className="form-row">
               {newCar.isShared ? (
-                 <>
-                   <div className="form-group"><label>From (Start) *</label><input type="text" value={newCar.routeFrom} onChange={(e) => setNewCar({ ...newCar, routeFrom: e.target.value })} placeholder="e.g. GIKI Hostels" /></div>
-                   <div className="form-group"><label>To (Destination) *</label><input type="text" value={newCar.routeTo} onChange={(e) => setNewCar({ ...newCar, routeTo: e.target.value })} placeholder="e.g. Islamabad" /></div>
-                   <div className="form-group"><label>Price Per Seat (PKR) *</label><input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 800" /></div>
-                 </>
-              ) : (
-                 <>
-                    <div className="form-group"><label>Price Per Hour (PKR) *</label><input type="number" value={newCar.pricePerHour} onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })} placeholder="e.g., 500" /></div>
-                    <div className="form-group"><label>Max Duration (Hours)</label><input type="number" value={newCar.maxDuration} onChange={(e) => setNewCar({ ...newCar, maxDuration: e.target.value })} placeholder="24" /></div>
-                 </>
-              )}
+                  <>
+                    <div className="form-group"><label>From (Start) *</label><input type="text" value={newCar.routeFrom} onChange={(e) => setNewCar({ ...newCar, routeFrom: e.target.value })} placeholder="e.g. GIKI Hostels" /></div>
+                    <div className="form-group"><label>To (Destination) *</label><input type="text" value={newCar.routeTo} onChange={(e) => setNewCar({ ...newCar, routeTo: e.target.value })} placeholder="e.g. Islamabad" /></div>
+                    <div className="form-group"><label>Price Per Seat (PKR) *</label><input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 800" /></div>
+                  </>
+               ) : (
+                  <>
+                     <div className="form-group"><label>Price Per Hour (PKR) *</label><input type="number" value={newCar.pricePerHour} onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })} placeholder="e.g., 500" /></div>
+                     <div className="form-group"><label>Max Duration (Hours)</label><input type="number" value={newCar.maxDuration} onChange={(e) => setNewCar({ ...newCar, maxDuration: e.target.value })} placeholder="24" /></div>
+                  </>
+               )}
             </div>
 
             <div className="form-row">
@@ -607,6 +656,7 @@ const handleBookingChange = (field, value) => {
           <div className="vehicles-grid">
             {filteredVehicles.map((vehicle) => {
               const isOwnCar = vehicle.owner === currentUser?._id || vehicle.owner?._id === currentUser?._id;
+              
               return (
                 <div key={vehicle._id} className="vehicle-card">
                   <div className="vehicle-image-wrapper">
@@ -647,44 +697,27 @@ const handleBookingChange = (field, value) => {
         )}
       </div>
 
-      {/* --- BOOKING MODAL (WITH SUCCESS STATE) --- */}
+      {/* --- BOOKING MODAL --- */}
       {selectedVehicle && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="booking-modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={handleCloseModal}>✕</button>
-            
             <div className="modal-vehicle-card">
               <img src={selectedVehicle.image} alt={selectedVehicle.name} className="modal-vehicle-image" />
               <div className="modal-vehicle-details">
                 <h2>{selectedVehicle.name}</h2>
                 <p>{selectedVehicle.isShared ? `PKR ${selectedVehicle.pricePerSeat} / seat` : `PKR ${selectedVehicle.pricePerHour} / hour`}</p>
-                {selectedVehicle.isShared && <div style={{fontSize: '0.85rem', color: '#666', marginTop: '4px'}}>{selectedVehicle.routeFrom} ➔ {selectedVehicle.routeTo}</div>}
+                 {selectedVehicle.isShared && <div style={{fontSize: '0.85rem', color: '#666', marginTop: '4px'}}>{selectedVehicle.routeFrom} ➔ {selectedVehicle.routeTo}</div>}
               </div>
             </div>
 
-            {/* --- CONDITIONALLY RENDER: FORM vs SUCCESS SCREEN --- */}
             {bookingStatus === 'success' ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
                     <div style={{ fontSize: '4rem' }}>✅</div>
                     <h2 style={{color: '#16a34a', margin: 0}}>Request Sent!</h2>
-                    <p style={{color: '#666', maxWidth: '300px'}}>
-                        Your request has been sent to the owner. Please contact them on WhatsApp to confirm payment.
-                    </p>
-                    
-                    <button 
-                        onClick={openWhatsApp}
-                        style={{
-                            backgroundColor: '#25D366', color: 'white', border: 'none', padding: '14px 24px', 
-                            borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
-                        }}
-                    >
-                        💬 Chat on WhatsApp
-                    </button>
-
-                    <button onClick={handleCloseModal} style={{background: 'none', border: 'none', color: '#666', cursor: 'pointer', textDecoration: 'underline'}}>
-                        Close
-                    </button>
+                    <p style={{color: '#666', maxWidth: '300px'}}>Your request has been sent to the owner.</p>
+                    <button onClick={openWhatsApp} style={{ backgroundColor: '#25D366', color: 'white', border: 'none', padding: '14px 24px', borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>💬 Chat on WhatsApp</button>
+                    <button onClick={handleCloseModal} style={{background: 'none', border: 'none', color: '#666', cursor: 'pointer', textDecoration: 'underline'}}>Close</button>
                 </div>
             ) : (
                 <form onSubmit={confirmBooking} className="booking-form">
@@ -702,19 +735,15 @@ const handleBookingChange = (field, value) => {
                   <div className="booking-section">
                     <h3>Select Payment Method</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                        
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'Cash'})} style={{ border: bookingData.paymentMethod === 'Cash' ? '2px solid #2563eb' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'Cash' ? '#eff6ff' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                           <div style={{fontSize: '1.8rem', marginBottom: '5px'}}>💸</div><strong>Cash</strong>
                         </div>
-
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})} style={{ border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                           <img src="https://icon2.cleanpng.com/lnd/20250110/ip/d0ad8bb55bc068ecf2058516429406.webp" alt="JazzCash" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }} /><strong>JazzCash</strong>
                         </div>
-
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})} style={{ border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                           <img src="https://img.favpng.com/24/17/11/easypaisa-logo-easypaisa-logo-in-green-and-black-EjCnPTZb_t.jpg" alt="EasyPaisa" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }} /><strong>EasyPaisa</strong>
                         </div>
-
                     </div>
                     {bookingData.paymentMethod !== 'Cash' && (<p style={{fontSize: '0.8rem', color: '#666', marginTop: '12px', textAlign: 'center'}}>ℹ️ Send money to <strong>{selectedVehicle.ownerPhone}</strong> via {bookingData.paymentMethod}</p>)}
                   </div>
@@ -724,7 +753,7 @@ const handleBookingChange = (field, value) => {
                     <div className="form-group"><label>Phone *</label><input type="text" value={bookingData.phone} onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })} placeholder="03001234567" required /></div>
                     <div className="form-group"><label>Registration No *</label><input type="text" value={bookingData.regNo} onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })} placeholder="2023546" required /></div>
                     
-                    {/* --- NEW: CNIC UPLOAD FIELD --- */}
+                    {/* CNIC UPLOAD */}
                     <div className="form-group">
                         <label>Upload CNIC (Required for Safety) *</label>
                         <input type="file" accept="image/*" onChange={handleCNICUpload} required />
@@ -733,24 +762,19 @@ const handleBookingChange = (field, value) => {
                   </div>
 
                   <div className="booking-summary-compact">
-    <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
-    
-    {selectedVehicle.isShared ? (
-        <div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>
-    ) : (
-        <div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>
-    )}
-
-    {/* --- ADD THIS NEW ROW --- */}
-    <div className="summary-row" style={{ color: '#666', fontSize: '0.9rem' }}>
-        <span>Platform Fee:</span><strong>PKR {SERVICE_FEE}</strong>
-    </div>
-    {/* ------------------------ */}
-
-    <div className="summary-row total">
-        <span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong>
-    </div>
-</div>
+                    <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
+                    {selectedVehicle.isShared ? (
+                        <div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>
+                    ) : (
+                        <div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>
+                    )}
+                    <div className="summary-row" style={{ color: '#666', fontSize: '0.9rem' }}>
+                        <span>Platform Fee:</span><strong>PKR {SERVICE_FEE}</strong>
+                    </div>
+                    <div className="summary-row total">
+                        <span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong>
+                    </div>
+                  </div>
 
                   <div className="modal-buttons">
                     <button type="button" onClick={handleCloseModal} className="cancel-btn">Cancel</button>
