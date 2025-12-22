@@ -20,7 +20,7 @@ const AVAILABLE_LOCATIONS = [
 
 const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Bike'];
 
-// --- PERFORMANCE FIX: Image Compression Helper ---
+// --- HELPER: Image Compression ---
 const compressImage = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -30,15 +30,11 @@ const compressImage = (file) => {
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        // Resize image to max width 800px (Sufficient for web)
         const scaleSize = 800 / img.width;
         canvas.width = 800;
         canvas.height = img.height * scaleSize;
-
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Compress to JPEG at 60% quality (Drastically reduces size)
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
         resolve(compressedBase64);
       };
@@ -46,6 +42,12 @@ const compressImage = (file) => {
     };
     reader.onerror = (error) => reject(error);
   });
+};
+
+// --- HELPER: Phone Validation (11 Digits) ---
+const isValidPhone = (phone) => {
+  const phoneRegex = /^\d{11}$/; // Matches exactly 11 digits
+  return phoneRegex.test(phone);
 };
 
 function Dashboard() {
@@ -60,7 +62,7 @@ function Dashboard() {
     location: '', 
     phone: '', 
     regNo: '',
-    paymentMethod: 'Cash' // Default payment
+    paymentMethod: 'Cash'
   });
   
   const [totalCost, setTotalCost] = useState(0);
@@ -71,8 +73,6 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
-  
-  // Toggle for Seat Sharing vs Full Rental
   const [isSeatSharing, setIsSeatSharing] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -83,12 +83,12 @@ function Dashboard() {
   const [newCar, setNewCar] = useState({
     name: '',
     type: 'Sedan',
-    pricePerHour: '', // For Full Rental
-    maxDuration: '',  // For Full Rental
-    isShared: false,  // Toggle State
-    pricePerSeat: '', // For Seat Sharing
-    routeFrom: '',    // For Seat Sharing
-    routeTo: '',      // For Seat Sharing
+    pricePerHour: '', 
+    maxDuration: '',  
+    isShared: false,  
+    pricePerSeat: '', 
+    routeFrom: '',    
+    routeTo: '',      
     features: [],
     location: 'FME',
     image: null,
@@ -103,7 +103,6 @@ function Dashboard() {
     setCurrentUser(user);
   }, []);
 
-  // Fetch vehicles when the mode toggle changes
   useEffect(() => {
     fetchVehicles();
   }, [isSeatSharing]);
@@ -143,7 +142,6 @@ function Dashboard() {
   };
 
   const handleBookClick = (vehicle) => {
-    // Reset booking data
     setBookingData(prev => ({ 
       ...prev, 
       hours: filters.hours, 
@@ -152,11 +150,10 @@ function Dashboard() {
     }));
     setSelectedVehicle(vehicle);
     
-    // Calculate initial cost based on mode
     if (vehicle.isShared) {
-      setTotalCost(vehicle.pricePerSeat * 1); // Use SEAT price
+      setTotalCost(vehicle.pricePerSeat * 1);
     } else {
-      setTotalCost(vehicle.pricePerHour * filters.hours); // Use HOURLY price
+      setTotalCost(vehicle.pricePerHour * filters.hours);
     }
   };
 
@@ -164,7 +161,6 @@ function Dashboard() {
     const newData = { ...bookingData, [field]: value };
     setBookingData(newData);
     
-    // Recalculate cost dynamically
     if (selectedVehicle) {
       if (selectedVehicle.isShared) {
         setTotalCost(selectedVehicle.pricePerSeat * (field === 'seats' ? value : bookingData.seats));
@@ -194,9 +190,15 @@ function Dashboard() {
   const confirmBooking = async (e) => {
     e.preventDefault();
 
+    // --- VALIDATION: Check for 11 Digit Phone ---
     if (!bookingData.phone || !bookingData.regNo) {
       alert('Please enter your phone number and registration number');
       return;
+    }
+
+    if (!isValidPhone(bookingData.phone)) {
+        alert('❌ Invalid Phone Number!\n\nPlease enter a valid 11-digit mobile number (e.g., 03001234567).');
+        return;
     }
 
     try {
@@ -217,7 +219,7 @@ function Dashboard() {
           phone: bookingData.phone,
           regNo: bookingData.regNo,
           paymentMethod: bookingData.paymentMethod,
-          status: 'pending' // Send as request
+          status: 'pending'
         }),
       });
 
@@ -234,7 +236,15 @@ function Dashboard() {
           methodMsg = `Please send PKR ${totalCost} via ${bookingData.paymentMethod} to the owner's number (${selectedVehicle.ownerPhone}) and show the screenshot upon meetup.`;
       }
 
-      alert(`✅ Request Sent to Owner!\n\nMode: ${selectedVehicle.isShared ? 'Seat Reservation' : 'Full Rental'}\nThe owner has been notified. \n\nPayment: ${bookingData.paymentMethod}\n${methodMsg}`);
+      // --- NOTIFICATION: Prepare WhatsApp Link ---
+      const ownerPhone = selectedVehicle.ownerPhone;
+      const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please check your dashboard! My Phone: ${bookingData.phone}`;
+      const waLink = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
+
+      // Alert User
+      if(window.confirm(`✅ Request Sent Successfully!\n\nDo you want to notify the owner via WhatsApp now?`)) {
+          window.open(waLink, '_blank');
+      }
       
       fetchVehicles();
       setSelectedVehicle(null);
@@ -245,7 +255,6 @@ function Dashboard() {
     }
   };
 
-  // --- UPDATED IMAGE UPLOAD HANDLER (Uses Compression) ---
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -284,6 +293,12 @@ function Dashboard() {
       return;
     }
     
+    // --- VALIDATION: Check Phone on Add Car ---
+    if (!isValidPhone(newCar.phone)) {
+        alert('❌ Invalid Phone Number!\n\nPlease enter a valid 11-digit mobile number (e.g., 03001234567).');
+        return;
+    }
+
     // Validation based on type
     if (newCar.isShared) {
         if(!newCar.pricePerSeat || !newCar.routeFrom || !newCar.routeTo) {
@@ -643,14 +658,69 @@ function Dashboard() {
                 <div className="form-group"><label>Owner Location</label><div className="location-display">📍 {selectedVehicle.location}</div></div>
               </div>
 
+              {/* PAYMENT SECTION */}
               <div className="booking-section">
                 <h3>Select Payment Method</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                    <div onClick={() => setBookingData({...bookingData, paymentMethod: 'Cash'})} style={{ border: bookingData.paymentMethod === 'Cash' ? '2px solid #2563eb' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'Cash' ? '#eff6ff' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}><div style={{fontSize: '1.2rem', marginBottom: '5px'}}>💸</div><strong>Cash</strong></div>
-                    <div onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})} style={{ border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}><div style={{fontSize: '1.2rem', marginBottom: '5px'}}>🔴</div><strong>JazzCash</strong></div>
-                    <div onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})} style={{ border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}><div style={{fontSize: '1.2rem', marginBottom: '5px'}}>🟢</div><strong>EasyPaisa</strong></div>
+                    
+                    {/* CASH OPTION */}
+                    <div 
+                      onClick={() => setBookingData({...bookingData, paymentMethod: 'Cash'})}
+                      style={{ 
+                        border: bookingData.paymentMethod === 'Cash' ? '2px solid #2563eb' : '1px solid #ddd',
+                        backgroundColor: bookingData.paymentMethod === 'Cash' ? '#eff6ff' : '#fff',
+                        borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <div style={{fontSize: '1.8rem', marginBottom: '5px'}}>💸</div>
+                      <strong>Cash</strong>
+                    </div>
+
+                    {/* JAZZCASH OPTION */}
+                    <div 
+                      onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})}
+                      style={{ 
+                        border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd',
+                        backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff',
+                        borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      {/* Official JazzCash Logo */}
+                      <img 
+                        src="https://upload.wikimedia.org/wikipedia/commons/8/81/JazzCash_logo.png" 
+                        alt="JazzCash" 
+                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} 
+                      />
+                      <strong>JazzCash</strong>
+                    </div>
+
+                    {/* EASYPAISA OPTION */}
+                    <div 
+                      onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})}
+                      style={{ 
+                        border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd',
+                        backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff',
+                        borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      {/* Official EasyPaisa Logo */}
+                      <img 
+                        src="https://upload.wikimedia.org/wikipedia/commons/e/e2/Easypaisa_logo.png" 
+                        alt="EasyPaisa" 
+                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} 
+                      />
+                      <strong>EasyPaisa</strong>
+                    </div>
+
                 </div>
-                {bookingData.paymentMethod !== 'Cash' && (<p style={{fontSize: '0.8rem', color: '#666', marginTop: '8px'}}>ℹ️ You will need to send money to the owner's number <strong>({selectedVehicle.ownerPhone})</strong> and show proof.</p>)}
+                {bookingData.paymentMethod !== 'Cash' && (
+                    <p style={{fontSize: '0.8rem', color: '#666', marginTop: '12px', textAlign: 'center'}}>
+                        ℹ️ Send money to <strong>{selectedVehicle.ownerPhone}</strong> via {bookingData.paymentMethod}
+                    </p>
+                )}
               </div>
 
               <div className="booking-section">
