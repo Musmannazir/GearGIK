@@ -19,6 +19,7 @@ const AVAILABLE_LOCATIONS = [
 ];
 
 const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Cycle', 'Bike'];
+const SERVICE_FEE = 20;
 
 // --- HELPER: Image Compression ---
 const compressImage = (file) => {
@@ -157,30 +158,39 @@ function Dashboard() {
     }
   };
 
-  const handleBookClick = (vehicle) => {
+const handleBookClick = (vehicle) => {
     setBookingData(prev => ({ ...prev, hours: filters.hours, seats: 1, paymentMethod: 'Cash' }));
     setSelectedVehicle(vehicle);
     setBookingStatus('idle'); 
+    
+    // --- UPDATED LOGIC HERE ---
     if (vehicle.isShared) {
-      setTotalCost(vehicle.pricePerSeat * 1);
+      // Add + SERVICE_FEE here
+      setTotalCost((vehicle.pricePerSeat * 1) + SERVICE_FEE);
     } else {
-      setTotalCost(vehicle.pricePerHour * filters.hours);
+      // Add + SERVICE_FEE here
+      setTotalCost((vehicle.pricePerHour * filters.hours) + SERVICE_FEE);
     }
   };
 
-  const handleBookingChange = (field, value) => {
+const handleBookingChange = (field, value) => {
     const newData = { ...bookingData, [field]: value };
     setBookingData(newData);
     
     if (selectedVehicle) {
       if (selectedVehicle.isShared) {
-        setTotalCost(selectedVehicle.pricePerSeat * (field === 'seats' ? value : bookingData.seats));
+        // Calculate new seats count
+        const seats = field === 'seats' ? value : bookingData.seats;
+        // --- UPDATED LOGIC HERE ---
+        setTotalCost((selectedVehicle.pricePerSeat * seats) + SERVICE_FEE);
       } else {
-        setTotalCost(selectedVehicle.pricePerHour * (field === 'hours' ? value : bookingData.hours));
+        // Calculate new hours count
+        const hours = field === 'hours' ? value : bookingData.hours;
+        // --- UPDATED LOGIC HERE ---
+        setTotalCost((selectedVehicle.pricePerHour * hours) + SERVICE_FEE);
       }
     }
   };
-
   const filteredVehicles = vehicleList
     .filter(vehicle => {
       const typeMatch = filters.type === 'All Types' || vehicle.type === filters.type;
@@ -255,7 +265,8 @@ function Dashboard() {
           regNo: bookingData.regNo,
           paymentMethod: bookingData.paymentMethod,
           cnicImage: bookingData.cnicImage, // Sending CNIC
-          status: 'pending'
+          status: 'pending',
+          totalPrice: totalCost
         }),
       });
 
@@ -722,10 +733,24 @@ function Dashboard() {
                   </div>
 
                   <div className="booking-summary-compact">
-                    <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
-                    {selectedVehicle.isShared ? (<div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>) : (<div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>)}
-                    <div className="summary-row total"><span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong></div>
-                  </div>
+    <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
+    
+    {selectedVehicle.isShared ? (
+        <div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>
+    ) : (
+        <div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>
+    )}
+
+    {/* --- ADD THIS NEW ROW --- */}
+    <div className="summary-row" style={{ color: '#666', fontSize: '0.9rem' }}>
+        <span>Platform Fee:</span><strong>PKR {SERVICE_FEE}</strong>
+    </div>
+    {/* ------------------------ */}
+
+    <div className="summary-row total">
+        <span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong>
+    </div>
+</div>
 
                   <div className="modal-buttons">
                     <button type="button" onClick={handleCloseModal} className="cancel-btn">Cancel</button>
