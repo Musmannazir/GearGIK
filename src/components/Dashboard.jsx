@@ -236,13 +236,20 @@ function Dashboard() {
           methodMsg = `Please send PKR ${totalCost} via ${bookingData.paymentMethod} to the owner's number (${selectedVehicle.ownerPhone}) and show the screenshot upon meetup.`;
       }
 
-      // --- NOTIFICATION: Prepare WhatsApp Link ---
-      const ownerPhone = selectedVehicle.ownerPhone;
+      // --- NOTIFICATION: Fix WhatsApp Link (03 -> 923) ---
+      let ownerPhone = selectedVehicle.ownerPhone || "";
+      
+      // Ensure number is valid string and format to 92...
+      if (ownerPhone.startsWith('0')) {
+          ownerPhone = '92' + ownerPhone.substring(1);
+      }
+
       const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please check your dashboard! My Phone: ${bookingData.phone}`;
       const waLink = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
 
       // Alert User
-      if(window.confirm(`✅ Request Sent Successfully!\n\nDo you want to notify the owner via WhatsApp now?`)) {
+      if(window.confirm(`✅ Request Sent Successfully!\n\nClick OK to notify the owner via WhatsApp now.`)) {
+          // Open in new tab
           window.open(waLink, '_blank');
       }
       
