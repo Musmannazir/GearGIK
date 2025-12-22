@@ -249,7 +249,7 @@ function Dashboard() {
         ownerPhone = '92' + ownerPhone.substring(1);
     }
 
-    const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please check your dashboard! My Phone: ${bookingData.phone}`;
+    const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please Respond asap! My Phone: ${bookingData.phone}`;
     const waLink = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
     
     // 3. Open Window (Browser allows this because it's inside a click handler)
@@ -660,11 +660,11 @@ function Dashboard() {
                         </div>
 
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})} style={{ border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/JazzCash_logo.png/320px-JazzCash_logo.png" alt="JazzCash" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }} /><strong>JazzCash</strong>
+                          <img src="https://www.cleanpng.com/free/jazzcash-logo.html" alt="JazzCash" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }} /><strong>JazzCash</strong>
                         </div>
 
                         <div onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})} style={{ border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Easypaisa_logo.png/320px-Easypaisa_logo.png" alt="EasyPaisa" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }} /><strong>EasyPaisa</strong>
+                          <img src="https://favpng.com/png_search/easypaisa-logo" alt="EasyPaisa" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }} /><strong>EasyPaisa</strong>
                         </div>
 
                     </div>
