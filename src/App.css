@@ -375,7 +375,76 @@ html, body, #root {
 .auth-link:hover {
   color: #764ba2;
 }
+/* Wrapper to position the eye icon */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 
+.input-wrapper input {
+  width: 100%;
+  padding-right: 40px; /* Make space for the icon */
+}
+
+/* The Eye Icon Button */
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-password:hover {
+  color: #333;
+}
+
+/* Divider for OR section */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #ddd;
+}
+
+.divider span {
+  padding: 0 10px;
+}
+
+/* Google Button Styling */
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: white;
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 8px; /* Matches your inputs */
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #333;
+}
+
+.google-btn:hover {
+  background-color: #f9f9f9;
+  border-color: #ccc;
+}
 /* ===== DASHBOARD STYLES ===== */
 .dashboard-container {
   min-height: 100vh;
