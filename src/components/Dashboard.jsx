@@ -687,11 +687,12 @@ function Dashboard() {
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                       }}
                     >
-                      {/* Official JazzCash Logo */}
+                      {/* Official JazzCash Logo (Thumbnail for reliability) */}
                       <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/8/81/JazzCash_logo.png" 
+                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/JazzCash_logo.png/320px-JazzCash_logo.png" 
                         alt="JazzCash" 
-                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} 
+                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }}
+                        onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }}
                       />
                       <strong>JazzCash</strong>
                     </div>
@@ -706,11 +707,12 @@ function Dashboard() {
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                       }}
                     >
-                      {/* Official EasyPaisa Logo */}
+                      {/* Official EasyPaisa Logo (Thumbnail for reliability) */}
                       <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/e/e2/Easypaisa_logo.png" 
+                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Easypaisa_logo.png/320px-Easypaisa_logo.png" 
                         alt="EasyPaisa" 
-                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} 
+                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }}
+                        onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }}
                       />
                       <strong>EasyPaisa</strong>
                     </div>
