@@ -78,9 +78,12 @@ function Signup() {
     }
   };
 
-  const handleGoogleSignup = () => {
-    window.location.href = `${API_URL}/auth/google`; 
-  };
+ // This sends the user to Render (Backend) to start the login.
+const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
+
+<button onClick={() => window.location.href = `${API_URL}/auth/google`}>
+  Sign in with Google
+</button>
 
   return (
     <div className="auth-container">
