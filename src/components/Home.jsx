@@ -20,10 +20,11 @@ function Home() {
       {/* ===== NAVBAR ===== */}
       <nav className="navbar">
         <div className="logo">GearGIK</div>
-        <div className="nav-links">
-          <button className="nav-btn-ghost" onClick={() => navigate('/login')}>Login</button>
-          <button className="nav-btn-primary" onClick={() => navigate('/signup')}>Sign Up</button>
-        </div>
+       <div className="nav-links">
+  {/* Added inline style to ensure visibility on mobile */}
+  <button className="nav-btn-ghost" onClick={() => navigate('/login')}>Login</button>
+  <button className="nav-btn-primary" onClick={() => navigate('/signup')}>Sign Up</button>
+</div>
       </nav>
 
       {/* ===== HERO SECTION ===== */}
