@@ -1,6 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCarSide, FaUserFriends, FaShieldAlt, FaArrowRight } from 'react-icons/fa';
+import { 
+  FaCarSide, 
+  FaUserFriends, 
+  FaShieldAlt, 
+  FaArrowRight, 
+  FaEnvelope, 
+  FaMapMarkerAlt, 
+  FaLinkedin, 
+  FaGithub, 
+  FaTwitter 
+} from 'react-icons/fa';
 
 function Home() {
   const navigate = useNavigate();
@@ -34,7 +44,6 @@ function Home() {
           </div>
         </div>
         <div className="hero-visuals">
-          {/* Abstract representation or car image */}
           <div className="glass-card">
             <div className="glass-icon"><FaCarSide /></div>
             <div>
@@ -89,18 +98,64 @@ function Home() {
         </div>
       </section>
 
-      {/* ===== FOOTER ===== */}
+      {/* ===== PROFESSIONAL FOOTER ===== */}
       <footer className="footer">
         <div className="footer-content">
-          <div className="footer-brand">
-            <h3>GearGIK</h3>
-            <p>© 2025 GearGIK Inc.</p>
+          
+          {/* Column 1: Brand & Contact */}
+          <div className="footer-col">
+            <h3 className="footer-logo">GearGIK</h3>
+            <p className="footer-desc">
+              Reimagining student transportation. Safe, affordable, and community-driven.
+            </p>
+            <div className="contact-info">
+              <div className="contact-item">
+                <FaEnvelope className="contact-icon" /> 
+                <a href="mailto:nazirusman721@gmail.com">nazirusman721@gmail.com</a>
+              </div>
+              <div className="contact-item">
+                <FaMapMarkerAlt className="contact-icon" /> 
+                <span>GIK Institute, Topi, Swabi</span>
+              </div>
+            </div>
           </div>
-          <div className="footer-links">
-            <span>Privacy</span>
-            <span>Terms</span>
-            <span>Contact</span>
+
+          {/* Column 2: Quick Links */}
+          <div className="footer-col">
+            <h4>Quick Links</h4>
+            <ul className="footer-links">
+              <li onClick={() => navigate('/')}>Home</li>
+              <li onClick={() => navigate('/login')}>Browse Cars</li>
+              <li onClick={() => navigate('/signup')}>Become a Host</li>
+              <li onClick={() => navigate('/login')}>Login</li>
+            </ul>
           </div>
+
+          {/* Column 3: Legal */}
+          <div className="footer-col">
+            <h4>Support</h4>
+            <ul className="footer-links">
+              <li>Help Center</li>
+              <li>Terms of Service</li>
+              <li>Privacy Policy</li>
+              <li>Safety Guidelines</li>
+            </ul>
+          </div>
+
+          {/* Column 4: Socials */}
+          <div className="footer-col">
+            <h4>Connect</h4>
+            <div className="social-icons">
+              <a href="#" className="social-icon"><FaLinkedin /></a>
+              <a href="#" className="social-icon"><FaGithub /></a>
+              <a href="#" className="social-icon"><FaTwitter /></a>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="footer-bottom">
+          <p>© {new Date().getFullYear()} GearGIK. Built by Muhammad Usman Nazir.</p>
         </div>
       </footer>
     </div>
