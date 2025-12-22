@@ -38,10 +38,17 @@ function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // --- REDIRECT LOGIC ---
-      if (email === ADMIN_EMAIL) {
+      // --- ROBUST REDIRECT LOGIC ---
+      // 1. Clean the input (remove spaces, make lowercase)
+      const cleanInputEmail = email.trim().toLowerCase();
+      const cleanAdminEmail = ADMIN_EMAIL.trim().toLowerCase();
+
+      // 2. Compare
+      if (cleanInputEmail === cleanAdminEmail) {
+        console.log("Admin Detected. Redirecting to /admin");
         navigate('/admin'); // Redirect to Admin Dashboard
       } else {
+        console.log("User Detected. Redirecting to /dashboard");
         navigate('/dashboard'); // Redirect to Normal Dashboard
       }
       
