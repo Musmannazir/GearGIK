@@ -25,8 +25,15 @@ function Dashboard() {
   const [vehicleList, setVehicleList] = useState([]);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   
-  // Updated booking data to include seats
-  const [bookingData, setBookingData] = useState({ hours: 1, seats: 1, location: '', phone: '', regNo: '' });
+  // Booking Data State
+  const [bookingData, setBookingData] = useState({ 
+    hours: 1, 
+    seats: 1, 
+    location: '', 
+    phone: '', 
+    regNo: '',
+    paymentMethod: 'Cash' // Default payment
+  });
   
   const [totalCost, setTotalCost] = useState(0);
   const [showAddCarForm, setShowAddCarForm] = useState(false);
@@ -37,7 +44,7 @@ function Dashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   
-  // --- NEW: Toggle for Seat Sharing ---
+  // --- NEW: Toggle for Seat Sharing vs Full Rental ---
   const [isSeatSharing, setIsSeatSharing] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -48,12 +55,12 @@ function Dashboard() {
   const [newCar, setNewCar] = useState({
     name: '',
     type: 'Sedan',
-    pricePerHour: '',
-    maxDuration: '',
-    isShared: false, // --- NEW: Track if car is shared
-    pricePerSeat: '', // --- NEW: Price per seat
-    routeFrom: '', // --- NEW: Route Start
-    routeTo: '',   // --- NEW: Route End
+    pricePerHour: '', // For Full Rental
+    maxDuration: '',  // For Full Rental
+    isShared: false,  // Toggle State
+    pricePerSeat: '', // For Seat Sharing
+    routeFrom: '',    // For Seat Sharing
+    routeTo: '',      // For Seat Sharing
     features: [],
     location: 'FME',
     image: null,
@@ -68,7 +75,7 @@ function Dashboard() {
     setCurrentUser(user);
   }, []);
 
-  // Fetch vehicles whenever the "Seat Sharing" toggle changes
+  // Fetch vehicles when the mode toggle changes
   useEffect(() => {
     fetchVehicles();
   }, [isSeatSharing]);
@@ -88,7 +95,6 @@ function Dashboard() {
       setLoading(true);
       setError('');
       
-      // Pass the isShared flag to backend
       const vehicleUrl = `${API_URL}/vehicles?isShared=${isSeatSharing}`;
       const response = await fetch(vehicleUrl);
       
@@ -110,18 +116,22 @@ function Dashboard() {
 
   const handleBookClick = (vehicle) => {
     // Reset booking data
-    setBookingData(prev => ({ ...prev, hours: filters.hours, seats: 1 }));
+    setBookingData(prev => ({ 
+      ...prev, 
+      hours: filters.hours, 
+      seats: 1,
+      paymentMethod: 'Cash'
+    }));
     setSelectedVehicle(vehicle);
     
     // Calculate initial cost based on mode
     if (vehicle.isShared) {
-      setTotalCost(vehicle.pricePerSeat * 1); // Default 1 seat
+      setTotalCost(vehicle.pricePerSeat * 1); // Use SEAT price
     } else {
-      setTotalCost(vehicle.pricePerHour * filters.hours);
+      setTotalCost(vehicle.pricePerHour * filters.hours); // Use HOURLY price
     }
   };
 
-  // Generic handler for changing booking inputs (Hours or Seats)
   const handleBookingChange = (field, value) => {
     const newData = { ...bookingData, [field]: value };
     setBookingData(newData);
@@ -129,31 +139,25 @@ function Dashboard() {
     // Recalculate cost dynamically
     if (selectedVehicle) {
       if (selectedVehicle.isShared) {
-        // Shared: Cost = Price Per Seat * Number of Seats
         setTotalCost(selectedVehicle.pricePerSeat * (field === 'seats' ? value : bookingData.seats));
       } else {
-        // Full: Cost = Price Per Hour * Hours
         setTotalCost(selectedVehicle.pricePerHour * (field === 'hours' ? value : bookingData.hours));
       }
     }
   };
 
-  // --- NEW: Filter Logic ---
   const filteredVehicles = vehicleList
     .filter(vehicle => {
       const typeMatch = filters.type === 'All Types' || vehicle.type === filters.type;
       
-      // If Seat Sharing Mode: Check if seats are available
       if (isSeatSharing) {
         return typeMatch && vehicle.seatsAvailable > 0;
       }
       
-      // If Full Rental Mode: Check max duration limit
       const durationMatch = !vehicle.maxDuration || vehicle.maxDuration >= filters.hours;
       return typeMatch && durationMatch;
     })
     .sort((a, b) => {
-      // Sort by relevant price
       const priceA = isSeatSharing ? a.pricePerSeat : a.pricePerHour;
       const priceB = isSeatSharing ? b.pricePerSeat : b.pricePerHour;
       return priceA - priceB;
@@ -179,11 +183,13 @@ function Dashboard() {
         body: JSON.stringify({
           vehicleId: selectedVehicle._id,
           duration: bookingData.hours,
-          seatsToBook: bookingData.seats, // --- NEW: Send seat count
+          seatsToBook: bookingData.seats,
           pickupLocation: selectedVehicle.location,
           startTime: new Date(),
           phone: bookingData.phone,
           regNo: bookingData.regNo,
+          paymentMethod: bookingData.paymentMethod,
+          status: 'pending' // Send as request
         }),
       });
 
@@ -193,12 +199,18 @@ function Dashboard() {
         throw new Error(data.error || 'Booking failed');
       }
 
-      alert(`Booking Confirmed! 🎉\n\nMode: ${selectedVehicle.isShared ? 'Seat Share' : 'Full Rental'}\nTotal Cost: PKR ${totalCost.toLocaleString()}`);
+      let methodMsg = "";
+      if(bookingData.paymentMethod === 'Cash') {
+          methodMsg = "Please pay cash to the owner upon meetup.";
+      } else {
+          methodMsg = `Please send PKR ${totalCost} via ${bookingData.paymentMethod} to the owner's number (${selectedVehicle.ownerPhone}) and show the screenshot upon meetup.`;
+      }
+
+      alert(`✅ Request Sent to Owner!\n\nMode: ${selectedVehicle.isShared ? 'Seat Reservation' : 'Full Rental'}\nThe owner has been notified. \n\nPayment: ${bookingData.paymentMethod}\n${methodMsg}`);
       
-      // Refresh list to update available seats
       fetchVehicles();
       setSelectedVehicle(null);
-      setBookingData({ hours: 1, seats: 1, location: '', phone: '', regNo: '' });
+      setBookingData({ hours: 1, seats: 1, location: '', phone: '', regNo: '', paymentMethod: 'Cash' });
       setTotalCost(0);
     } catch (err) {
       alert(`Booking Error: ${err.message}`);
@@ -236,16 +248,26 @@ function Dashboard() {
 
   const handleAddCar = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
     if (!newCar.name || !newCar.image || !newCar.phone || !newCar.regNo) {
       alert('Please fill in all required fields');
       return;
     }
+    
+    // Validation based on type
+    if (newCar.isShared) {
+        if(!newCar.pricePerSeat || !newCar.routeFrom || !newCar.routeTo) {
+            alert("Please fill in Seat Price, From and To locations.");
+            return;
+        }
+    } else {
+        if(!newCar.pricePerHour) {
+            alert("Please fill in Price Per Hour.");
+            return;
+        }
+    }
 
     try {
       const token = localStorage.getItem('token');
-      
       const response = await fetch(`${API_URL}/vehicles`, {
         method: 'POST',
         headers: {
@@ -259,36 +281,19 @@ function Dashboard() {
           maxDuration: parseInt(newCar.maxDuration) || 24,
         }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add vehicle');
-      }
-
+      if (!response.ok) throw new Error(data.error || 'Failed to add vehicle');
       setVehicleList([data.vehicle, ...vehicleList]);
       
-      // Reset form
+      // Reset Form
       setNewCar({
-        name: '',
-        type: 'Sedan',
-        pricePerHour: '',
-        maxDuration: '',
-        isShared: false,
-        pricePerSeat: '',
-        routeFrom: '', // Reset Route
-        routeTo: '',   // Reset Route
-        features: [],
-        location: 'FME',
-        image: null,
-        phone: '',
-        regNo: '',
+        name: '', type: 'Sedan', pricePerHour: '', maxDuration: '', isShared: false, pricePerSeat: '',
+        routeFrom: '', routeTo: '', features: [], location: 'FME', image: null, phone: '', regNo: '',
       });
       setImagePreview(null);
       setShowAddCarForm(false);
-      
       setSuccessMessage('Vehicle added successfully! 🎉');
-      fetchVehicles(); // Refresh logic
+      fetchVehicles();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       alert(`Error adding car: ${err.message}`);
@@ -296,23 +301,14 @@ function Dashboard() {
   };
 
   const handleDeleteCar = async (vehicleId) => {
-    if (!window.confirm('Are you sure you want to remove this car from your fleet?')) {
-      return;
-    }
-
+    if (!window.confirm('Are you sure you want to remove this car from your fleet?')) return;
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/vehicles/${vehicleId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete vehicle');
-      }
-
+      if (!response.ok) throw new Error('Failed to delete vehicle');
       setVehicleList(vehicleList.filter(v => v._id !== vehicleId));
       setSuccessMessage('Car removed successfully! 🗑️');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -324,25 +320,24 @@ function Dashboard() {
   const handleEditCar = (vehicle) => {
     setEditingCar(vehicle._id);
     setNewCar({
-      name: vehicle.name,
-      type: vehicle.type,
-      pricePerHour: vehicle.pricePerHour,
-      pricePerSeat: vehicle.pricePerSeat,
-      isShared: vehicle.isShared,
-      maxDuration: vehicle.maxDuration || '',
-      routeFrom: vehicle.routeFrom || '', // Load route info
-      routeTo: vehicle.routeTo || '',     // Load route info
-      features: vehicle.features,
+      name: vehicle.name, 
+      type: vehicle.type, 
+      pricePerHour: vehicle.pricePerHour || '', 
+      pricePerSeat: vehicle.pricePerSeat || '',
+      isShared: vehicle.isShared, 
+      maxDuration: vehicle.maxDuration || '', 
+      routeFrom: vehicle.routeFrom || '', 
+      routeTo: vehicle.routeTo || '', 
+      features: vehicle.features, 
       location: vehicle.location,
-      image: vehicle.image,
-      phone: vehicle.ownerPhone,
+      image: vehicle.image, 
+      phone: vehicle.ownerPhone, 
       regNo: vehicle.ownerRegNo,
     });
     setImagePreview(vehicle.image);
     setShowAddCarForm(true);
   };
 
-  // Logic to update existing car (similar to Add, but PUT)
   const handleUpdateCar = async (e) => {
     e.preventDefault();
     try {
@@ -357,10 +352,8 @@ function Dashboard() {
           maxDuration: parseInt(newCar.maxDuration) || 24,
         }),
       });
-
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to update car');
-
       setVehicleList(vehicleList.map(v => v._id === editingCar ? data.vehicle : v));
       setEditingCar(null);
       setShowAddCarForm(false);
@@ -379,9 +372,7 @@ function Dashboard() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ isAvailable: true }),
       });
-
       if (!response.ok) throw new Error('Failed to update vehicle');
-
       const updatedVehicle = await response.json();
       setVehicleList(vehicleList.map(v => v._id === vehicleId ? updatedVehicle.vehicle : v));
       setSuccessMessage('Car is available again! ✅');
@@ -401,8 +392,7 @@ function Dashboard() {
     setEditingCar(null);
     setNewCar({
         name: '', type: 'Sedan', pricePerHour: '', maxDuration: '', isShared: false, pricePerSeat: '',
-        routeFrom: '', routeTo: '',
-        features: [], location: 'FME', image: null, phone: '', regNo: '',
+        routeFrom: '', routeTo: '', features: [], location: 'FME', image: null, phone: '', regNo: '',
     });
     setImagePreview(null);
     setShowAddCarForm(false);
@@ -417,8 +407,6 @@ function Dashboard() {
 
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [selectedRemoveCar, setSelectedRemoveCar] = useState('');
-
-  // Helper: Only Cars can be shared
   const canShare = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck'].includes(newCar.type);
 
   return (
@@ -444,60 +432,26 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* --- FILTER SECTION WITH TOGGLE --- */}
+      {/* --- FILTER SECTION --- */}
       <div className="filter-section" style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', margin: '20px auto', maxWidth: '1200px', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-        
-        {/* Toggle Switch */}
         <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '8px', padding: '4px' }}>
-            <button 
-              onClick={() => setIsSeatSharing(false)}
-              style={{
-                padding: '10px 20px', borderRadius: '6px', border: 'none', fontWeight: '600', cursor: 'pointer',
-                background: !isSeatSharing ? '#2563eb' : 'transparent',
-                color: !isSeatSharing ? 'white' : '#64748b',
-                transition: 'all 0.2s'
-              }}
-            >
-              🚗 Full Rental
-            </button>
-            <button 
-              onClick={() => setIsSeatSharing(true)}
-              style={{
-                padding: '10px 20px', borderRadius: '6px', border: 'none', fontWeight: '600', cursor: 'pointer',
-                background: isSeatSharing ? '#2563eb' : 'transparent',
-                color: isSeatSharing ? 'white' : '#64748b',
-                transition: 'all 0.2s'
-              }}
-            >
-              👥 Book a Seat
-            </button>
+            <button onClick={() => setIsSeatSharing(false)} style={{ padding: '10px 20px', borderRadius: '6px', border: 'none', fontWeight: '600', cursor: 'pointer', background: !isSeatSharing ? '#2563eb' : 'transparent', color: !isSeatSharing ? 'white' : '#64748b', transition: 'all 0.2s' }}>🚗 Full Rental</button>
+            <button onClick={() => setIsSeatSharing(true)} style={{ padding: '10px 20px', borderRadius: '6px', border: 'none', fontWeight: '600', cursor: 'pointer', background: isSeatSharing ? '#2563eb' : 'transparent', color: isSeatSharing ? 'white' : '#64748b', transition: 'all 0.2s' }}>👥 Book a Seat</button>
         </div>
-
         <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <label style={{ fontWeight: '500', color: '#666' }}>Type:</label>
-          <select 
-            value={filters.type} 
-            onChange={(e) => setFilters({...filters, type: e.target.value})}
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-          >
+          <select value={filters.type} onChange={(e) => setFilters({...filters, type: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}>
             {VEHICLE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
           </select>
         </div>
-
-        {/* Hide duration filter in seat sharing mode */}
         {!isSeatSharing && (
             <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <label style={{ fontWeight: '500', color: '#666' }}>Duration:</label>
-            <select 
-                value={filters.hours} 
-                onChange={(e) => setFilters({...filters, hours: parseInt(e.target.value)})}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-            >
+            <select value={filters.hours} onChange={(e) => setFilters({...filters, hours: parseInt(e.target.value)})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}>
                 {[1, 2, 3, 4, 6, 8, 12, 24].map(hr => <option key={hr} value={hr}>{hr} Hours</option>)}
             </select>
             </div>
         )}
-        
         <div style={{ marginLeft: 'auto', fontSize: '14px', color: '#888' }}>
           Showing <strong>{filteredVehicles.length}</strong> {isSeatSharing ? 'shared rides' : 'vehicles'}
         </div>
@@ -514,9 +468,7 @@ function Dashboard() {
             </select>
             <div className="modal-buttons">
               <button onClick={() => setShowRemoveDialog(false)} className="cancel-btn">Cancel</button>
-              <button className="confirm-btn" disabled={!selectedRemoveCar} onClick={() => {
-                  if (selectedRemoveCar) { handleDeleteCar(selectedRemoveCar); setShowRemoveDialog(false); setSelectedRemoveCar(''); }
-                }}>Remove</button>
+              <button className="confirm-btn" disabled={!selectedRemoveCar} onClick={() => { if (selectedRemoveCar) { handleDeleteCar(selectedRemoveCar); setShowRemoveDialog(false); setSelectedRemoveCar(''); }}}>Remove</button>
             </div>
           </div>
         </div>
@@ -530,101 +482,54 @@ function Dashboard() {
           <h2>{editingCar ? '✏️ Edit Your Car' : '➕ Add Your Car'}</h2>
           <form onSubmit={editingCar ? handleUpdateCar : handleAddCar} className="add-car-form">
             <div className="form-row">
-              <div className="form-group">
-                <label>Car Name *</label>
-                <input type="text" value={newCar.name} onChange={(e) => setNewCar({ ...newCar, name: e.target.value })} placeholder="Honda Civic" required />
-              </div>
-              <div className="form-group">
-                <label>Vehicle Type</label>
-                <select value={newCar.type} onChange={(e) => setNewCar({ ...newCar, type: e.target.value })}>
-                  {VEHICLE_TYPES.filter(t => t !== 'All Types').map(type => <option key={type} value={type}>{type}</option>)}
-                </select>
-              </div>
+              <div className="form-group"><label>Car Name *</label><input type="text" value={newCar.name} onChange={(e) => setNewCar({ ...newCar, name: e.target.value })} placeholder="Honda Civic" required /></div>
+              <div className="form-group"><label>Vehicle Type</label><select value={newCar.type} onChange={(e) => setNewCar({ ...newCar, type: e.target.value })}>{VEHICLE_TYPES.filter(t => t !== 'All Types').map(type => <option key={type} value={type}>{type}</option>)}</select></div>
             </div>
-
-            {/* --- SEAT SHARING TOGGLE --- */}
+            
             {canShare && (
               <div style={{ background: '#eff6ff', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #bfdbfe' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#1e3a8a', fontWeight: '700' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={newCar.isShared} 
-                    onChange={e => setNewCar({...newCar, isShared: e.target.checked})} 
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  Enable Seat Sharing? (Student Carpool)
+                  <input type="checkbox" checked={newCar.isShared} onChange={e => setNewCar({...newCar, isShared: e.target.checked})} style={{ width: '18px', height: '18px' }} /> Enable Seat Sharing? (Student Carpool)
                 </label>
                 {newCar.isShared && <p style={{ fontSize: '0.85rem', color: '#3b82f6', marginTop: '5px' }}>Students can book individual seats (Max 4). Full car rental will be disabled.</p>}
               </div>
             )}
 
+            {/* --- DYNAMIC FORM FIELDS --- */}
             <div className="form-row">
               {newCar.isShared ? (
                  <>
+                   {/* FIELDS FOR SEAT SHARING MODE */}
+                   <div className="form-group"><label>From (Start) *</label><input type="text" value={newCar.routeFrom} onChange={(e) => setNewCar({ ...newCar, routeFrom: e.target.value })} placeholder="e.g. GIKI Hostels" /></div>
+                   <div className="form-group"><label>To (Destination) *</label><input type="text" value={newCar.routeTo} onChange={(e) => setNewCar({ ...newCar, routeTo: e.target.value })} placeholder="e.g. Islamabad" /></div>
                    <div className="form-group">
-                     <label>From (Start) *</label>
-                     <input type="text" value={newCar.routeFrom} onChange={(e) => setNewCar({ ...newCar, routeFrom: e.target.value })} placeholder="e.g. GIKI Hostels" required />
-                   </div>
-                   <div className="form-group">
-                     <label>To (Destination) *</label>
-                     <input type="text" value={newCar.routeTo} onChange={(e) => setNewCar({ ...newCar, routeTo: e.target.value })} placeholder="e.g. Islamabad" required />
-                   </div>
-                   <div className="form-group">
-                     <label>Price Per Seat (PKR) *</label>
-                     <input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 200" required />
+                       <label>Price Per Seat (PKR) *</label> 
+                       <input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 800" />
                    </div>
                  </>
               ) : (
                  <>
+                    {/* FIELDS FOR FULL RENTAL MODE */}
                     <div className="form-group">
                         <label>Price Per Hour (PKR) *</label>
-                        <input type="number" value={newCar.pricePerHour} onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })} placeholder="e.g., 500" required />
+                        <input type="number" value={newCar.pricePerHour} onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })} placeholder="e.g., 500" />
                     </div>
-                    <div className="form-group">
-                        <label>Max Duration (Hours)</label>
-                        <input type="number" value={newCar.maxDuration} onChange={(e) => setNewCar({ ...newCar, maxDuration: e.target.value })} placeholder="24" />
-                    </div>
+                    <div className="form-group"><label>Max Duration (Hours)</label><input type="number" value={newCar.maxDuration} onChange={(e) => setNewCar({ ...newCar, maxDuration: e.target.value })} placeholder="24" /></div>
                  </>
               )}
             </div>
 
             <div className="form-row">
-              <div className="form-group">
-                <label>Your Phone *</label>
-                <input type="text" value={newCar.phone} onChange={(e) => setNewCar({ ...newCar, phone: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Reg Number *</label>
-                <input type="text" value={newCar.regNo} onChange={(e) => setNewCar({ ...newCar, regNo: e.target.value })} required />
-              </div>
+              <div className="form-group"><label>Your Phone *</label><input type="text" value={newCar.phone} onChange={(e) => setNewCar({ ...newCar, phone: e.target.value })} required /></div>
+              <div className="form-group"><label>Reg Number *</label><input type="text" value={newCar.regNo} onChange={(e) => setNewCar({ ...newCar, regNo: e.target.value })} required /></div>
             </div>
-
-            <div className="form-group">
-              <label>Location</label>
-              <select value={newCar.location} onChange={(e) => setNewCar({ ...newCar, location: e.target.value })}>
-                {AVAILABLE_LOCATIONS.map((loc) => <option key={loc.value} value={loc.value}>{loc.label}</option>)}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Car Image *</label>
-              <input type="file" accept="image/*" onChange={handleImageUpload} required={!editingCar} />
-              {imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}
-            </div>
-
+            <div className="form-group"><label>Location</label><select value={newCar.location} onChange={(e) => setNewCar({ ...newCar, location: e.target.value })}>{AVAILABLE_LOCATIONS.map((loc) => <option key={loc.value} value={loc.value}>{loc.label}</option>)}</select></div>
+            <div className="form-group"><label>Car Image *</label><input type="file" accept="image/*" onChange={handleImageUpload} required={!editingCar} />{imagePreview && <img src={imagePreview} alt="Preview" className="image-preview" />}</div>
             <div className="form-group">
               <label>Features</label>
-              <div className="feature-input-group">
-                <input type="text" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} placeholder="AC, Music..." onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())} />
-                <button type="button" onClick={handleAddFeature}>Add</button>
-              </div>
-              <div className="features-list">
-                {newCar.features.map((feature, idx) => (
-                  <span key={idx} className="feature-tag">{feature} <button type="button" onClick={() => handleRemoveFeature(idx)} className="remove-feature">✕</button></span>
-                ))}
-              </div>
+              <div className="feature-input-group"><input type="text" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} placeholder="AC, Music..." onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())} /><button type="button" onClick={handleAddFeature}>Add</button></div>
+              <div className="features-list">{newCar.features.map((feature, idx) => (<span key={idx} className="feature-tag">{feature} <button type="button" onClick={() => handleRemoveFeature(idx)} className="remove-feature">✕</button></span>))}</div>
             </div>
-
             <button type="submit" className="submit-btn">{editingCar ? '💾 Update vehicle' : '➕ Add vehicle'}</button>
           </form>
         </div>
@@ -633,14 +538,7 @@ function Dashboard() {
       {error && <div className="error-msg">{error}</div>}
 
       <div className="vehicles-container">
-        {loading ? (
-          <div className="loading-spinner"><p className="loading">Loading vehicles...</p></div>
-        ) : filteredVehicles.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-            <h3>No vehicles found.</h3>
-            <p>Try changing the filter or mode.</p>
-          </div>
-        ) : (
+        {loading ? <div className="loading-spinner"><p className="loading">Loading vehicles...</p></div> : filteredVehicles.length === 0 ? <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}><h3>No vehicles found.</h3><p>Try changing the filter or mode.</p></div> : (
           <div className="vehicles-grid">
             {filteredVehicles.map((vehicle) => {
               const isOwnCar = vehicle.owner === currentUser?._id || vehicle.owner?._id === currentUser?._id;
@@ -649,61 +547,36 @@ function Dashboard() {
                   <div className="vehicle-image-wrapper">
                     <img src={vehicle.image} alt={vehicle.name} className="vehicle-image" />
                     <span className="vehicle-type-badge">{vehicle.type}</span>
-                    {isOwnCar && (
-                      <button className="delete-cross-btn" onClick={() => { if (window.confirm('Delete this ad?')) handleDeleteCar(vehicle._id); }}>×</button>
-                    )}
+                    {isOwnCar && <button className="delete-cross-btn" onClick={() => { if (window.confirm('Delete this ad?')) handleDeleteCar(vehicle._id); }}>×</button>}
                   </div>
                   <div className="card-content">
                     <div className="card-header"><h3>{vehicle.name}</h3></div>
                     
-                    {/* Price Display Logic */}
+                    {/* DISPLAY LOGIC FOR PRICES */}
                     {isSeatSharing ? (
                         <div style={{ marginBottom: '10px' }}>
-                            <p className="vehicle-price" style={{marginBottom: '5px'}}>PKR {vehicle.pricePerSeat}/seat</p>
-                            <span style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                {vehicle.seatsAvailable} Seats Left
-                            </span>
+                            <p className="vehicle-price" style={{marginBottom: '5px', color: '#16a34a'}}>PKR {vehicle.pricePerSeat} <span style={{fontSize: '0.8rem', color: '#666'}}>/ seat</span></p>
+                            <span style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>{vehicle.seatsAvailable} Seats Left</span>
                         </div>
                     ) : (
-                        <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()}/hour</p>
+                        <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()} <span style={{fontSize: '0.8rem', color: '#666'}}>/ hour</span></p>
                     )}
-
-                    {/* ✅ NEW: Route Display */}
+                    
+                    {/* DISPLAY ROUTE IF SHARED */}
                     {isSeatSharing && vehicle.routeFrom && (
                       <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '0.9rem', color: '#475569', marginBottom: '10px', border: '1px solid #e2e8f0' }}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                            <span style={{fontWeight: '600'}}>🛫 From:</span> <span>{vehicle.routeFrom}</span>
-                        </div>
-                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                            <span style={{fontWeight: '600'}}>🏁 To:</span> <span>{vehicle.routeTo}</span>
-                        </div>
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}><span style={{fontWeight: '600'}}>🛫 From:</span> <span>{vehicle.routeFrom}</span></div>
+                        <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{fontWeight: '600'}}>🏁 To:</span> <span>{vehicle.routeTo}</span></div>
                       </div>
                     )}
-
-                    {vehicle.maxDuration && !isSeatSharing && vehicle.maxDuration < 24 && (
-                      <div style={{ fontSize: '12px', color: '#d32f2f', fontWeight: 'bold', marginBottom: '5px' }}>⏱️ Max: {vehicle.maxDuration}h</div>
-                    )}
-
-                    <div className="owner-info-card">
-                      <p><strong>Owner:</strong> {vehicle.owner?.fullName || 'You'}</p>
-                      <p><strong>📞</strong> {vehicle.ownerPhone}</p>
-                    </div>
-
+                    
+                    {vehicle.maxDuration && !isSeatSharing && vehicle.maxDuration < 24 && <div style={{ fontSize: '12px', color: '#d32f2f', fontWeight: 'bold', marginBottom: '5px' }}>⏱️ Max: {vehicle.maxDuration}h</div>}
+                    <div className="owner-info-card"><p><strong>Owner:</strong> {vehicle.owner?.fullName || 'You'}</p><p><strong>📞</strong> {vehicle.ownerPhone}</p></div>
                     <div className="card-footer">
                       {isOwnCar ? (
-                        <div className="owner-actions">
-                          <p className="owned-tag">Your Car</p>
-                          <div className="owner-buttons">
-                            <button className="edit-car-btn" onClick={() => handleEditCar(vehicle)}>✏️ Edit</button>
-                            {!vehicle.isAvailable && <button className="make-available-btn" onClick={() => handleMakeAvailable(vehicle._id)}>📋 Available</button>}
-                          </div>
-                        </div>
-                      ) : !vehicle.isAvailable ? (
-                        <button className="rent-btn-rented" disabled>🔒 Rented</button>
-                      ) : (
-                        <button className="rent-btn" onClick={() => handleBookClick(vehicle)}>
-                            {isSeatSharing ? 'Book Seat' : 'Book Now'}
-                        </button>
+                        <div className="owner-actions"><p className="owned-tag">Your Car</p><div className="owner-buttons"><button className="edit-car-btn" onClick={() => handleEditCar(vehicle)}>✏️ Edit</button>{!vehicle.isAvailable && <button className="make-available-btn" onClick={() => handleMakeAvailable(vehicle._id)}>📋 Available</button>}</div></div>
+                      ) : !vehicle.isAvailable ? <button className="rent-btn-rented" disabled>🔒 Rented</button> : (
+                        <button className="rent-btn" onClick={() => handleBookClick(vehicle)}>{isSeatSharing ? 'Book Seat' : 'Book Now'}</button>
                       )}
                     </div>
                   </div>
@@ -714,7 +587,7 @@ function Dashboard() {
         )}
       </div>
 
-      {/* --- BOOKING MODAL --- */}
+      {/* --- BOOKING MODAL WITH PAYMENT OPTIONS --- */}
       {selectedVehicle && (
         <div className="modal-overlay" onClick={() => setSelectedVehicle(null)}>
           <div className="booking-modal" onClick={(e) => e.stopPropagation()}>
@@ -723,45 +596,30 @@ function Dashboard() {
               <img src={selectedVehicle.image} alt={selectedVehicle.name} className="modal-vehicle-image" />
               <div className="modal-vehicle-details">
                 <h2>{selectedVehicle.name}</h2>
-                <p>{selectedVehicle.isShared ? `PKR ${selectedVehicle.pricePerSeat}/seat` : `PKR ${selectedVehicle.pricePerHour}/hour`}</p>
+                <p>{selectedVehicle.isShared ? `PKR ${selectedVehicle.pricePerSeat} / seat` : `PKR ${selectedVehicle.pricePerHour} / hour`}</p>
+                {selectedVehicle.isShared && <div style={{fontSize: '0.85rem', color: '#666', marginTop: '4px'}}>{selectedVehicle.routeFrom} ➔ {selectedVehicle.routeTo}</div>}
               </div>
             </div>
 
             <form onSubmit={confirmBooking} className="booking-form">
               <div className="booking-section">
                 <h3>Booking Details</h3>
-                
                 {selectedVehicle.isShared ? (
-                    // --- SEAT SELECTION ---
-                    <div className="form-group">
-                        <label>How many seats?</label>
-                        <select 
-                            value={bookingData.seats} 
-                            onChange={(e) => handleBookingChange('seats', parseInt(e.target.value))}
-                        >
-                            {[...Array(selectedVehicle.seatsAvailable).keys()].map(i => (
-                                <option key={i+1} value={i+1}>{i+1} Seat{i > 0 ? 's' : ''}</option>
-                            ))}
-                        </select>
-                    </div>
+                    <div className="form-group"><label>How many seats?</label><select value={bookingData.seats} onChange={(e) => handleBookingChange('seats', parseInt(e.target.value))}>{[...Array(selectedVehicle.seatsAvailable).keys()].map(i => (<option key={i+1} value={i+1}>{i+1} Seat{i > 0 ? 's' : ''}</option>))}</select></div>
                 ) : (
-                    // --- DURATION SELECTION ---
-                    <div className="form-group">
-                        <label>Duration (hours)</label>
-                        <select value={bookingData.hours} onChange={handleBookingChange ? (e) => handleBookingChange('hours', parseInt(e.target.value)) : handleHoursChange}>
-                            {[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (
-                            <option key={hr} value={hr} disabled={selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration}>
-                                {hr} hour{hr > 1 ? 's' : ''} {selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration ? '(Over Limit)' : ''}
-                            </option>
-                            ))}
-                        </select>
-                    </div>
+                    <div className="form-group"><label>Duration (hours)</label><select value={bookingData.hours} onChange={(e) => handleBookingChange('hours', parseInt(e.target.value))}>{[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (<option key={hr} value={hr} disabled={selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration}>{hr} hour{hr > 1 ? 's' : ''} {selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration ? '(Over Limit)' : ''}</option>))}</select></div>
                 )}
+                <div className="form-group"><label>Owner Location</label><div className="location-display">📍 {selectedVehicle.location}</div></div>
+              </div>
 
-                <div className="form-group">
-                  <label>Owner Location</label>
-                  <div className="location-display">📍 {selectedVehicle.location}</div>
+              <div className="booking-section">
+                <h3>Select Payment Method</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div onClick={() => setBookingData({...bookingData, paymentMethod: 'Cash'})} style={{ border: bookingData.paymentMethod === 'Cash' ? '2px solid #2563eb' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'Cash' ? '#eff6ff' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}><div style={{fontSize: '1.2rem', marginBottom: '5px'}}>💸</div><strong>Cash</strong></div>
+                    <div onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})} style={{ border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}><div style={{fontSize: '1.2rem', marginBottom: '5px'}}>🔴</div><strong>JazzCash</strong></div>
+                    <div onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})} style={{ border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}><div style={{fontSize: '1.2rem', marginBottom: '5px'}}>🟢</div><strong>EasyPaisa</strong></div>
                 </div>
+                {bookingData.paymentMethod !== 'Cash' && (<p style={{fontSize: '0.8rem', color: '#666', marginTop: '8px'}}>ℹ️ You will need to send money to the owner's number <strong>({selectedVehicle.ownerPhone})</strong> and show proof.</p>)}
               </div>
 
               <div className="booking-section">
@@ -772,17 +630,13 @@ function Dashboard() {
 
               <div className="booking-summary-compact">
                 <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
-                {selectedVehicle.isShared ? (
-                    <div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>
-                ) : (
-                    <div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>
-                )}
+                {selectedVehicle.isShared ? (<div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>) : (<div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>)}
                 <div className="summary-row total"><span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong></div>
               </div>
 
               <div className="modal-buttons">
                 <button type="button" onClick={() => setSelectedVehicle(null)} className="cancel-btn">Cancel</button>
-                <button type="submit" className="confirm-btn">Confirm Booking</button>
+                <button type="submit" className="confirm-btn">Send Request 🚀</button>
               </div>
             </form>
           </div>
