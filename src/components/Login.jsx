@@ -11,6 +11,9 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // --- ADMIN CREDENTIALS CHECK ---
+  const ADMIN_EMAIL = "gikigear123@gmail.com";
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -35,8 +38,13 @@ function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Navigate to dashboard
-      navigate('/dashboard');
+      // --- REDIRECT LOGIC ---
+      if (email === ADMIN_EMAIL) {
+        navigate('/admin'); // Redirect to Admin Dashboard
+      } else {
+        navigate('/dashboard'); // Redirect to Normal Dashboard
+      }
+      
     } catch (err) {
       setError(err.message);
       console.error('Login error:', err);
