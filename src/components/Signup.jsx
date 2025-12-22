@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaEye, FaEyeSlash } from 'react-icons/fa'; 
-import { FcGoogle } from 'react-icons/fc'; 
-import { MdErrorOutline } from 'react-icons/md'; // ✅ Import Error Icon
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { MdErrorOutline } from 'react-icons/md';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
+const API_URL =
+  import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
 
 function Signup() {
   const navigate = useNavigate();
@@ -13,19 +13,20 @@ function Signup() {
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (name === 'password' || name === 'confirmPassword') {
       setPasswordMatch(
@@ -46,8 +47,8 @@ function Signup() {
     }
 
     if (!passwordMatch) {
-        setError('Passwords do not match');
-        return;
+      setError('Passwords do not match');
+      return;
     }
 
     setIsLoading(true);
@@ -70,7 +71,6 @@ function Signup() {
       }
 
       navigate('/');
-
     } catch (err) {
       setError(err.message);
     } finally {
@@ -78,17 +78,9 @@ function Signup() {
     }
   };
 
- // This sends the user to Render (Backend) to start the login.
-const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
-
-<button onClick={() => window.location.href = `${API_URL}/auth/google`}>
-  Sign in with Google
-</button>
-
   return (
     <div className="auth-container">
       <div className="auth-content">
-
         <div className="auth-left">
           <div className="brand-section">
             <h1>GearGIK</h1>
@@ -102,8 +94,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onren
             <p className="auth-subtitle">Join GearGIK today</p>
 
             <form onSubmit={handleSignup}>
-              
-              {/* ✅ NEW BEAUTIFUL ERROR ALERT */}
               {error && (
                 <div className="error-alert">
                   <MdErrorOutline className="error-icon" size={22} />
@@ -136,74 +126,70 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onren
               <div className="form-group password-group">
                 <label>Password</label>
                 <div className="input-wrapper">
-                    <input
-                    type={showPassword ? "text" : "password"}
+                  <input
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    />
-                    <button 
-                        type="button" 
-                        className="toggle-password"
-                        onClick={() => setShowPassword(!showPassword)}
-                    >
-                        {showPassword ? <FaEyeSlash /> : <FaEye />}
-                    </button>
+                  />
+                  <button
+                    type="button"
+                    className="toggle-password"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
                 {formData.password && formData.password.length < 8 && (
-                    <p className="hint-text" style={{fontSize: '0.8rem', color: '#666', marginTop: '5px'}}>
-                        Must be at least 8 characters
-                    </p>
+                  <p className="hint-text">
+                    Must be at least 8 characters
+                  </p>
                 )}
               </div>
 
               <div className="form-group password-group">
                 <label>Confirm Password</label>
                 <div className="input-wrapper">
-                    <input
-                    type={showConfirmPassword ? "text" : "password"}
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     className={!passwordMatch ? 'input-error' : ''}
                     required
-                    />
-                    <button 
-                        type="button" 
-                        className="toggle-password"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                        {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                    </button>
+                  />
+                  <button
+                    type="button"
+                    className="toggle-password"
+                    onClick={() =>
+                      setShowConfirmPassword(!showConfirmPassword)
+                    }
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
-                {!passwordMatch && <p className="error-text">Passwords do not match</p>}
+                {!passwordMatch && (
+                  <p className="error-text">Passwords do not match</p>
+                )}
               </div>
 
-              <button type="submit" className="auth-btn" disabled={isLoading}>
+              <button
+                type="submit"
+                className="auth-btn"
+                disabled={isLoading}
+              >
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
 
-            <div className="divider">
-                <span>OR</span>
-            </div>
-
-            <button 
-                type="button" 
-                className="google-btn" 
-                onClick={handleGoogleSignup}
-            >
-                <FcGoogle size={20} />
-                <span>Continue with Google</span>
-            </button>
-
             <div className="auth-footer">
-              <p>Already have an account? <Link to="/">Sign in</Link></p>
+              <p>
+                Already have an account? <Link to="/">Sign in</Link>
+              </p>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
