@@ -20,6 +20,34 @@ const AVAILABLE_LOCATIONS = [
 
 const VEHICLE_TYPES = ['All Types', 'Sedan', 'SUV', 'Hatchback', 'Coupe', 'Truck', 'Bike'];
 
+// --- PERFORMANCE FIX: Image Compression Helper ---
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Resize image to max width 800px (Sufficient for web)
+        const scaleSize = 800 / img.width;
+        canvas.width = 800;
+        canvas.height = img.height * scaleSize;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Compress to JPEG at 60% quality (Drastically reduces size)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        resolve(compressedBase64);
+      };
+      img.onerror = (error) => reject(error);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 function Dashboard() {
   const navigate = useNavigate();
   const [vehicleList, setVehicleList] = useState([]);
@@ -44,7 +72,7 @@ function Dashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   
-  // --- NEW: Toggle for Seat Sharing vs Full Rental ---
+  // Toggle for Seat Sharing vs Full Rental
   const [isSeatSharing, setIsSeatSharing] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -217,15 +245,18 @@ function Dashboard() {
     }
   };
 
-  const handleImageUpload = (e) => {
+  // --- UPDATED IMAGE UPLOAD HANDLER (Uses Compression) ---
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-        setNewCar({ ...newCar, image: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedImage = await compressImage(file);
+        setImagePreview(compressedImage);
+        setNewCar({ ...newCar, image: compressedImage });
+      } catch (err) {
+        console.error("Image processing error:", err);
+        alert("Failed to process image. Please try another one.");
+      }
     }
   };
 
