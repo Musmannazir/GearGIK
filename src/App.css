@@ -445,6 +445,44 @@ html, body, #root {
   background-color: #f9f9f9;
   border-color: #ccc;
 }
+/* ===== BEAUTIFUL ERROR TOAST ===== */
+.error-toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #7f1d1d;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.25);
+  animation: slideFade 0.4s ease;
+}
+
+.error-icon-wrap {
+  background: #ef4444;
+  color: #fff;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Smooth animation */
+@keyframes slideFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 /* ===== DASHBOARD STYLES ===== */
 .dashboard-container {
   min-height: 100vh;
