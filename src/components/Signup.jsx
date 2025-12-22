@@ -40,7 +40,6 @@ function Signup() {
     setError('');
 
     // ✅ 1. VALID GMAIL CONSTRAINT
-    // We trim whitespace and convert to lowercase to ensure accurate checking
     const email = formData.email.trim().toLowerCase();
     if (!email.endsWith('@gmail.com')) {
       setError('Please use a valid Gmail address (ending in @gmail.com)');
@@ -67,7 +66,7 @@ function Signup() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: formData.fullName,
-          email: email, // Send the trimmed/lowercased email
+          email: email,
           password: formData.password,
         }),
       });
@@ -78,7 +77,7 @@ function Signup() {
         throw new Error(data.error || 'Signup failed');
       }
 
-      navigate('/');
+      navigate('/login'); // Redirect to login after successful signup
 
     } catch (err) {
       setError(err.message);
@@ -108,7 +107,7 @@ function Signup() {
               
               {/* Error Alert */}
               {error && (
-                <div className="error-alert">
+                <div className="error-toast" style={{display: 'flex', alignItems: 'center', gap: '10px', color: '#dc2626', background: '#fef2f2', padding: '10px', borderRadius: '8px', marginBottom: '15px'}}>
                   <MdErrorOutline className="error-icon" size={22} />
                   <span>{error}</span>
                 </div>
@@ -190,7 +189,8 @@ function Signup() {
             </form>
 
             <div className="auth-footer">
-              <p>Already have an account? <Link to="/login">Sign in</Link></p>
+              {/* ✅ FIXED: Point to /login instead of / */}
+              <p>Already have an account? <Link to="/login" className="auth-link">Sign in</Link></p>
             </div>
           </div>
         </div>
