@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import Eye icons
+import { FcGoogle } from 'react-icons/fc'; // Import Google icon
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
 
@@ -16,6 +18,10 @@ function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [error, setError] = useState('');
+  
+  // New state for toggling password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,10 +38,21 @@ function Signup() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    if (!passwordMatch) return;
+    setError('');
+
+    // 1. Check Password Length
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    // 2. Check Password Match
+    if (!passwordMatch) {
+        setError('Passwords do not match');
+        return;
+    }
 
     setIsLoading(true);
-    setError('');
 
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
@@ -62,6 +79,12 @@ function Signup() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSignup = () => {
+    // Redirect to your backend Google Auth endpoint
+    // Ensure your backend has a route like /auth/google that handles passport/OAuth
+    window.location.href = `${API_URL}/auth/google`; 
   };
 
   return (
@@ -107,27 +130,52 @@ function Signup() {
                 />
               </div>
 
-              <div className="form-group">
+              {/* Password Field with Toggle */}
+              <div className="form-group password-group">
                 <label>Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
+                <div className="input-wrapper">
+                    <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    />
+                    <button 
+                        type="button" 
+                        className="toggle-password"
+                        onClick={() => setShowPassword(!showPassword)}
+                    >
+                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                </div>
+                {formData.password && formData.password.length < 8 && (
+                    <p className="hint-text" style={{fontSize: '0.8rem', color: '#666', marginTop: '5px'}}>
+                        Must be at least 8 characters
+                    </p>
+                )}
               </div>
 
-              <div className="form-group">
+              {/* Confirm Password Field with Toggle */}
+              <div className="form-group password-group">
                 <label>Confirm Password</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={!passwordMatch ? 'input-error' : ''}
-                  required
-                />
+                <div className="input-wrapper">
+                    <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className={!passwordMatch ? 'input-error' : ''}
+                    required
+                    />
+                    <button 
+                        type="button" 
+                        className="toggle-password"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                        {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                </div>
                 {!passwordMatch && <p className="error-text">Passwords do not match</p>}
               </div>
 
@@ -135,6 +183,20 @@ function Signup() {
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
+
+            <div className="divider">
+                <span>OR</span>
+            </div>
+
+            {/* Google Button */}
+            <button 
+                type="button" 
+                className="google-btn" 
+                onClick={handleGoogleSignup}
+            >
+                <FcGoogle size={20} />
+                <span>Continue with Google</span>
+            </button>
 
             <div className="auth-footer">
               <p>Already have an account? <Link to="/">Sign in</Link></p>
