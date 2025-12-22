@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import Eye icons
-import { FcGoogle } from 'react-icons/fc'; // Import Google icon
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; 
+import { FcGoogle } from 'react-icons/fc'; 
+import { MdErrorOutline } from 'react-icons/md'; // ✅ Import Error Icon
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://geargik-backend-3.onrender.com/api';
 
@@ -19,7 +20,6 @@ function Signup() {
   const [passwordMatch, setPasswordMatch] = useState(true);
   const [error, setError] = useState('');
   
-  // New state for toggling password visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -40,13 +40,11 @@ function Signup() {
     e.preventDefault();
     setError('');
 
-    // 1. Check Password Length
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
     }
 
-    // 2. Check Password Match
     if (!passwordMatch) {
         setError('Passwords do not match');
         return;
@@ -71,7 +69,6 @@ function Signup() {
         throw new Error(data.error || 'Signup failed');
       }
 
-      // ✅ Redirect to login after successful signup
       navigate('/');
 
     } catch (err) {
@@ -82,8 +79,6 @@ function Signup() {
   };
 
   const handleGoogleSignup = () => {
-    // Redirect to your backend Google Auth endpoint
-    // Ensure your backend has a route like /auth/google that handles passport/OAuth
     window.location.href = `${API_URL}/auth/google`; 
   };
 
@@ -104,8 +99,13 @@ function Signup() {
             <p className="auth-subtitle">Join GearGIK today</p>
 
             <form onSubmit={handleSignup}>
+              
+              {/* ✅ NEW BEAUTIFUL ERROR ALERT */}
               {error && (
-                <div className="error-box">{error}</div>
+                <div className="error-alert">
+                  <MdErrorOutline className="error-icon" size={22} />
+                  <span>{error}</span>
+                </div>
               )}
 
               <div className="form-group">
@@ -130,7 +130,6 @@ function Signup() {
                 />
               </div>
 
-              {/* Password Field with Toggle */}
               <div className="form-group password-group">
                 <label>Password</label>
                 <div className="input-wrapper">
@@ -156,7 +155,6 @@ function Signup() {
                 )}
               </div>
 
-              {/* Confirm Password Field with Toggle */}
               <div className="form-group password-group">
                 <label>Confirm Password</label>
                 <div className="input-wrapper">
@@ -188,7 +186,6 @@ function Signup() {
                 <span>OR</span>
             </div>
 
-            {/* Google Button */}
             <button 
                 type="button" 
                 className="google-btn" 
