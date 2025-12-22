@@ -95,11 +95,14 @@ function Signup() {
 
             <form onSubmit={handleSignup}>
               {error && (
-                <div className="error-alert">
-                  <MdErrorOutline className="error-icon" size={22} />
-                  <span>{error}</span>
-                </div>
-              )}
+  <div className="error-toast">
+    <div className="error-icon-wrap">
+      <MdErrorOutline size={22} />
+    </div>
+    <span>{error}</span>
+  </div>
+)}
+
 
               <div className="form-group">
                 <label>Full Name</label>
