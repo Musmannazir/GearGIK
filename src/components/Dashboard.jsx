@@ -64,6 +64,10 @@ function Dashboard() {
     regNo: '',
     paymentMethod: 'Cash'
   });
+
+  // --- NEW: Track Booking Status for UI ---
+  // 'idle' | 'submitting' | 'success'
+  const [bookingStatus, setBookingStatus] = useState('idle');
   
   const [totalCost, setTotalCost] = useState(0);
   const [showAddCarForm, setShowAddCarForm] = useState(false);
@@ -110,26 +114,29 @@ function Dashboard() {
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && selectedVehicle) {
-        setSelectedVehicle(null);
+        handleCloseModal();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [selectedVehicle]);
 
+  const handleCloseModal = () => {
+    setSelectedVehicle(null);
+    setBookingStatus('idle'); // Reset status when closing
+    setBookingData({ hours: 1, seats: 1, location: '', phone: '', regNo: '', paymentMethod: 'Cash' });
+  };
+
   const fetchVehicles = async () => {
     try {
       setLoading(true);
       setError('');
-      
       const vehicleUrl = `${API_URL}/vehicles?isShared=${isSeatSharing}`;
       const response = await fetch(vehicleUrl);
-      
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || `Failed to load vehicles (${response.status})`);
       }
-      
       const data = await response.json();
       setVehicleList(data);
     } catch (err) {
@@ -142,14 +149,9 @@ function Dashboard() {
   };
 
   const handleBookClick = (vehicle) => {
-    setBookingData(prev => ({ 
-      ...prev, 
-      hours: filters.hours, 
-      seats: 1,
-      paymentMethod: 'Cash'
-    }));
+    setBookingData(prev => ({ ...prev, hours: filters.hours, seats: 1, paymentMethod: 'Cash' }));
     setSelectedVehicle(vehicle);
-    
+    setBookingStatus('idle'); // Ensure clean state
     if (vehicle.isShared) {
       setTotalCost(vehicle.pricePerSeat * 1);
     } else {
@@ -173,11 +175,7 @@ function Dashboard() {
   const filteredVehicles = vehicleList
     .filter(vehicle => {
       const typeMatch = filters.type === 'All Types' || vehicle.type === filters.type;
-      
-      if (isSeatSharing) {
-        return typeMatch && vehicle.seatsAvailable > 0;
-      }
-      
+      if (isSeatSharing) return typeMatch && vehicle.seatsAvailable > 0;
       const durationMatch = !vehicle.maxDuration || vehicle.maxDuration >= filters.hours;
       return typeMatch && durationMatch;
     })
@@ -190,7 +188,6 @@ function Dashboard() {
   const confirmBooking = async (e) => {
     e.preventDefault();
 
-    // --- VALIDATION: Check for 11 Digit Phone ---
     if (!bookingData.phone || !bookingData.regNo) {
       alert('Please enter your phone number and registration number');
       return;
@@ -202,6 +199,7 @@ function Dashboard() {
     }
 
     try {
+      setBookingStatus('submitting'); // Show loading state
       const token = localStorage.getItem('token');
       
       const response = await fetch(`${API_URL}/bookings`, {
@@ -229,37 +227,33 @@ function Dashboard() {
         throw new Error(data.error || 'Booking failed');
       }
 
-      let methodMsg = "";
-      if(bookingData.paymentMethod === 'Cash') {
-          methodMsg = "Please pay cash to the owner upon meetup.";
-      } else {
-          methodMsg = `Please send PKR ${totalCost} via ${bookingData.paymentMethod} to the owner's number (${selectedVehicle.ownerPhone}) and show the screenshot upon meetup.`;
-      }
-
-      // --- NOTIFICATION: Fix WhatsApp Link (03 -> 923) ---
-      let ownerPhone = selectedVehicle.ownerPhone || "";
+      // --- SUCCESS: Switch UI to Success View (Don't open window yet) ---
+      setBookingStatus('success'); 
+      fetchVehicles(); // Refresh background data
       
-      // Ensure number is valid string and format to 92...
-      if (ownerPhone.startsWith('0')) {
-          ownerPhone = '92' + ownerPhone.substring(1);
-      }
-
-      const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please check your dashboard! My Phone: ${bookingData.phone}`;
-      const waLink = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
-
-      // Alert User
-      if(window.confirm(`✅ Request Sent Successfully!\n\nClick OK to notify the owner via WhatsApp now.`)) {
-          // Open in new tab
-          window.open(waLink, '_blank');
-      }
-      
-      fetchVehicles();
-      setSelectedVehicle(null);
-      setBookingData({ hours: 1, seats: 1, location: '', phone: '', regNo: '', paymentMethod: 'Cash' });
-      setTotalCost(0);
     } catch (err) {
       alert(`Booking Error: ${err.message}`);
+      setBookingStatus('idle');
     }
+  };
+
+  // --- NEW FUNCTION: Open WhatsApp (With robust phone handling) ---
+  const openWhatsApp = () => {
+    let ownerPhone = selectedVehicle.ownerPhone || "";
+    
+    // 1. Remove any non-digit characters (dashes, spaces, parens)
+    ownerPhone = ownerPhone.replace(/\D/g, '');
+
+    // 2. Format local '03' numbers to international '923'
+    if (ownerPhone.startsWith('0')) {
+        ownerPhone = '92' + ownerPhone.substring(1);
+    }
+
+    const message = `Hey! I just requested your vehicle (${selectedVehicle.name}) on GearGIK. Please check your dashboard! My Phone: ${bookingData.phone}`;
+    const waLink = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(message)}`;
+    
+    // 3. Open Window (Browser allows this because it's inside a click handler)
+    window.open(waLink, '_blank');
   };
 
   const handleImageUpload = async (e) => {
@@ -278,19 +272,13 @@ function Dashboard() {
 
   const handleAddFeature = () => {
     if (featureInput.trim()) {
-      setNewCar({
-        ...newCar,
-        features: [...newCar.features, featureInput]
-      });
+      setNewCar({ ...newCar, features: [...newCar.features, featureInput] });
       setFeatureInput('');
     }
   };
 
   const handleRemoveFeature = (idx) => {
-    setNewCar({
-      ...newCar,
-      features: newCar.features.filter((_, i) => i !== idx)
-    });
+    setNewCar({ ...newCar, features: newCar.features.filter((_, i) => i !== idx) });
   };
 
   const handleAddCar = async (e) => {
@@ -306,7 +294,6 @@ function Dashboard() {
         return;
     }
 
-    // Validation based on type
     if (newCar.isShared) {
         if(!newCar.pricePerSeat || !newCar.routeFrom || !newCar.routeTo) {
             alert("Please fill in Seat Price, From and To locations.");
@@ -323,10 +310,7 @@ function Dashboard() {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/vehicles`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           ...newCar,
           pricePerHour: parseInt(newCar.pricePerHour) || 0,
@@ -337,8 +321,6 @@ function Dashboard() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to add vehicle');
       setVehicleList([data.vehicle, ...vehicleList]);
-      
-      // Reset Form
       setNewCar({
         name: '', type: 'Sedan', pricePerHour: '', maxDuration: '', isShared: false, pricePerSeat: '',
         routeFrom: '', routeTo: '', features: [], location: 'FME', image: null, phone: '', regNo: '',
@@ -373,19 +355,10 @@ function Dashboard() {
   const handleEditCar = (vehicle) => {
     setEditingCar(vehicle._id);
     setNewCar({
-      name: vehicle.name, 
-      type: vehicle.type, 
-      pricePerHour: vehicle.pricePerHour || '', 
-      pricePerSeat: vehicle.pricePerSeat || '',
-      isShared: vehicle.isShared, 
-      maxDuration: vehicle.maxDuration || '', 
-      routeFrom: vehicle.routeFrom || '', 
-      routeTo: vehicle.routeTo || '', 
-      features: vehicle.features, 
-      location: vehicle.location,
-      image: vehicle.image, 
-      phone: vehicle.ownerPhone, 
-      regNo: vehicle.ownerRegNo,
+      name: vehicle.name, type: vehicle.type, pricePerHour: vehicle.pricePerHour || '', pricePerSeat: vehicle.pricePerSeat || '',
+      isShared: vehicle.isShared, maxDuration: vehicle.maxDuration || '', routeFrom: vehicle.routeFrom || '', 
+      routeTo: vehicle.routeTo || '', features: vehicle.features, location: vehicle.location,
+      image: vehicle.image, phone: vehicle.ownerPhone, regNo: vehicle.ownerRegNo,
     });
     setImagePreview(vehicle.image);
     setShowAddCarForm(true);
@@ -548,25 +521,16 @@ function Dashboard() {
               </div>
             )}
 
-            {/* --- DYNAMIC FORM FIELDS --- */}
             <div className="form-row">
               {newCar.isShared ? (
                  <>
-                   {/* FIELDS FOR SEAT SHARING MODE */}
                    <div className="form-group"><label>From (Start) *</label><input type="text" value={newCar.routeFrom} onChange={(e) => setNewCar({ ...newCar, routeFrom: e.target.value })} placeholder="e.g. GIKI Hostels" /></div>
                    <div className="form-group"><label>To (Destination) *</label><input type="text" value={newCar.routeTo} onChange={(e) => setNewCar({ ...newCar, routeTo: e.target.value })} placeholder="e.g. Islamabad" /></div>
-                   <div className="form-group">
-                       <label>Price Per Seat (PKR) *</label> 
-                       <input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 800" />
-                   </div>
+                   <div className="form-group"><label>Price Per Seat (PKR) *</label><input type="number" value={newCar.pricePerSeat} onChange={(e) => setNewCar({ ...newCar, pricePerSeat: e.target.value })} placeholder="e.g., 800" /></div>
                  </>
               ) : (
                  <>
-                    {/* FIELDS FOR FULL RENTAL MODE */}
-                    <div className="form-group">
-                        <label>Price Per Hour (PKR) *</label>
-                        <input type="number" value={newCar.pricePerHour} onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })} placeholder="e.g., 500" />
-                    </div>
+                    <div className="form-group"><label>Price Per Hour (PKR) *</label><input type="number" value={newCar.pricePerHour} onChange={(e) => setNewCar({ ...newCar, pricePerHour: e.target.value })} placeholder="e.g., 500" /></div>
                     <div className="form-group"><label>Max Duration (Hours)</label><input type="number" value={newCar.maxDuration} onChange={(e) => setNewCar({ ...newCar, maxDuration: e.target.value })} placeholder="24" /></div>
                  </>
               )}
@@ -604,8 +568,6 @@ function Dashboard() {
                   </div>
                   <div className="card-content">
                     <div className="card-header"><h3>{vehicle.name}</h3></div>
-                    
-                    {/* DISPLAY LOGIC FOR PRICES */}
                     {isSeatSharing ? (
                         <div style={{ marginBottom: '10px' }}>
                             <p className="vehicle-price" style={{marginBottom: '5px', color: '#16a34a'}}>PKR {vehicle.pricePerSeat} <span style={{fontSize: '0.8rem', color: '#666'}}>/ seat</span></p>
@@ -614,15 +576,12 @@ function Dashboard() {
                     ) : (
                         <p className="vehicle-price">PKR {vehicle.pricePerHour.toLocaleString()} <span style={{fontSize: '0.8rem', color: '#666'}}>/ hour</span></p>
                     )}
-                    
-                    {/* DISPLAY ROUTE IF SHARED */}
                     {isSeatSharing && vehicle.routeFrom && (
                       <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '0.9rem', color: '#475569', marginBottom: '10px', border: '1px solid #e2e8f0' }}>
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}><span style={{fontWeight: '600'}}>🛫 From:</span> <span>{vehicle.routeFrom}</span></div>
                         <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{fontWeight: '600'}}>🏁 To:</span> <span>{vehicle.routeTo}</span></div>
                       </div>
                     )}
-                    
                     {vehicle.maxDuration && !isSeatSharing && vehicle.maxDuration < 24 && <div style={{ fontSize: '12px', color: '#d32f2f', fontWeight: 'bold', marginBottom: '5px' }}>⏱️ Max: {vehicle.maxDuration}h</div>}
                     <div className="owner-info-card"><p><strong>Owner:</strong> {vehicle.owner?.fullName || 'You'}</p><p><strong>📞</strong> {vehicle.ownerPhone}</p></div>
                     <div className="card-footer">
@@ -640,11 +599,12 @@ function Dashboard() {
         )}
       </div>
 
-      {/* --- BOOKING MODAL WITH PAYMENT OPTIONS --- */}
+      {/* --- BOOKING MODAL (WITH SUCCESS STATE) --- */}
       {selectedVehicle && (
-        <div className="modal-overlay" onClick={() => setSelectedVehicle(null)}>
+        <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="booking-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedVehicle(null)}>✕</button>
+            <button className="modal-close" onClick={handleCloseModal}>✕</button>
+            
             <div className="modal-vehicle-card">
               <img src={selectedVehicle.image} alt={selectedVehicle.name} className="modal-vehicle-image" />
               <div className="modal-vehicle-details">
@@ -654,101 +614,81 @@ function Dashboard() {
               </div>
             </div>
 
-            <form onSubmit={confirmBooking} className="booking-form">
-              <div className="booking-section">
-                <h3>Booking Details</h3>
-                {selectedVehicle.isShared ? (
-                    <div className="form-group"><label>How many seats?</label><select value={bookingData.seats} onChange={(e) => handleBookingChange('seats', parseInt(e.target.value))}>{[...Array(selectedVehicle.seatsAvailable).keys()].map(i => (<option key={i+1} value={i+1}>{i+1} Seat{i > 0 ? 's' : ''}</option>))}</select></div>
-                ) : (
-                    <div className="form-group"><label>Duration (hours)</label><select value={bookingData.hours} onChange={(e) => handleBookingChange('hours', parseInt(e.target.value))}>{[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (<option key={hr} value={hr} disabled={selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration}>{hr} hour{hr > 1 ? 's' : ''} {selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration ? '(Over Limit)' : ''}</option>))}</select></div>
-                )}
-                <div className="form-group"><label>Owner Location</label><div className="location-display">📍 {selectedVehicle.location}</div></div>
-              </div>
-
-              {/* PAYMENT SECTION */}
-              <div className="booking-section">
-                <h3>Select Payment Method</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                    
-                    {/* CASH OPTION */}
-                    <div 
-                      onClick={() => setBookingData({...bookingData, paymentMethod: 'Cash'})}
-                      style={{ 
-                        border: bookingData.paymentMethod === 'Cash' ? '2px solid #2563eb' : '1px solid #ddd',
-                        backgroundColor: bookingData.paymentMethod === 'Cash' ? '#eff6ff' : '#fff',
-                        borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-                      }}
-                    >
-                      <div style={{fontSize: '1.8rem', marginBottom: '5px'}}>💸</div>
-                      <strong>Cash</strong>
-                    </div>
-
-                    {/* JAZZCASH OPTION */}
-                    <div 
-                      onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})}
-                      style={{ 
-                        border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd',
-                        backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff',
-                        borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-                      }}
-                    >
-                      {/* Official JazzCash Logo (Thumbnail for reliability) */}
-                      <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/JazzCash_logo.png/320px-JazzCash_logo.png" 
-                        alt="JazzCash" 
-                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }}
-                        onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }}
-                      />
-                      <strong>JazzCash</strong>
-                    </div>
-
-                    {/* EASYPAISA OPTION */}
-                    <div 
-                      onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})}
-                      style={{ 
-                        border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd',
-                        backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff',
-                        borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-                      }}
-                    >
-                      {/* Official EasyPaisa Logo (Thumbnail for reliability) */}
-                      <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Easypaisa_logo.png/320px-Easypaisa_logo.png" 
-                        alt="EasyPaisa" 
-                        style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }}
-                        onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }}
-                      />
-                      <strong>EasyPaisa</strong>
-                    </div>
-
-                </div>
-                {bookingData.paymentMethod !== 'Cash' && (
-                    <p style={{fontSize: '0.8rem', color: '#666', marginTop: '12px', textAlign: 'center'}}>
-                        ℹ️ Send money to <strong>{selectedVehicle.ownerPhone}</strong> via {bookingData.paymentMethod}
+            {/* --- CONDITIONALLY RENDER: FORM vs SUCCESS SCREEN --- */}
+            {bookingStatus === 'success' ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ fontSize: '4rem' }}>✅</div>
+                    <h2 style={{color: '#16a34a', margin: 0}}>Request Sent!</h2>
+                    <p style={{color: '#666', maxWidth: '300px'}}>
+                        Your request has been sent to the owner. Please contact them on WhatsApp to confirm payment.
                     </p>
-                )}
-              </div>
+                    
+                    <button 
+                        onClick={openWhatsApp}
+                        style={{
+                            backgroundColor: '#25D366', color: 'white', border: 'none', padding: '14px 24px', 
+                            borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
+                        }}
+                    >
+                        💬 Chat on WhatsApp
+                    </button>
 
-              <div className="booking-section">
-                <h3>Your Information</h3>
-                <div className="form-group"><label>Phone *</label><input type="text" value={bookingData.phone} onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })} required /></div>
-                <div className="form-group"><label>Registration No *</label><input type="text" value={bookingData.regNo} onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })} required /></div>
-              </div>
+                    <button onClick={handleCloseModal} style={{background: 'none', border: 'none', color: '#666', cursor: 'pointer', textDecoration: 'underline'}}>
+                        Close
+                    </button>
+                </div>
+            ) : (
+                <form onSubmit={confirmBooking} className="booking-form">
+                  <div className="booking-section">
+                    <h3>Booking Details</h3>
+                    {selectedVehicle.isShared ? (
+                        <div className="form-group"><label>How many seats?</label><select value={bookingData.seats} onChange={(e) => handleBookingChange('seats', parseInt(e.target.value))}>{[...Array(selectedVehicle.seatsAvailable).keys()].map(i => (<option key={i+1} value={i+1}>{i+1} Seat{i > 0 ? 's' : ''}</option>))}</select></div>
+                    ) : (
+                        <div className="form-group"><label>Duration (hours)</label><select value={bookingData.hours} onChange={(e) => handleBookingChange('hours', parseInt(e.target.value))}>{[1, 2, 3, 4, 6, 8, 12, 24].map((hr) => (<option key={hr} value={hr} disabled={selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration}>{hr} hour{hr > 1 ? 's' : ''} {selectedVehicle.maxDuration && hr > selectedVehicle.maxDuration ? '(Over Limit)' : ''}</option>))}</select></div>
+                    )}
+                    <div className="form-group"><label>Owner Location</label><div className="location-display">📍 {selectedVehicle.location}</div></div>
+                  </div>
 
-              <div className="booking-summary-compact">
-                <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
-                {selectedVehicle.isShared ? (<div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>) : (<div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>)}
-                <div className="summary-row total"><span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong></div>
-              </div>
+                  {/* PAYMENT SECTION */}
+                  <div className="booking-section">
+                    <h3>Select Payment Method</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                        
+                        <div onClick={() => setBookingData({...bookingData, paymentMethod: 'Cash'})} style={{ border: bookingData.paymentMethod === 'Cash' ? '2px solid #2563eb' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'Cash' ? '#eff6ff' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{fontSize: '1.8rem', marginBottom: '5px'}}>💸</div><strong>Cash</strong>
+                        </div>
 
-              <div className="modal-buttons">
-                <button type="button" onClick={() => setSelectedVehicle(null)} className="cancel-btn">Cancel</button>
-                <button type="submit" className="confirm-btn">Send Request 🚀</button>
-              </div>
-            </form>
+                        <div onClick={() => setBookingData({...bookingData, paymentMethod: 'JazzCash'})} style={{ border: bookingData.paymentMethod === 'JazzCash' ? '2px solid #dc2626' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'JazzCash' ? '#fef2f2' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/JazzCash_logo.png/320px-JazzCash_logo.png" alt="JazzCash" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🔴 <strong>JazzCash</strong>'; }} /><strong>JazzCash</strong>
+                        </div>
+
+                        <div onClick={() => setBookingData({...bookingData, paymentMethod: 'EasyPaisa'})} style={{ border: bookingData.paymentMethod === 'EasyPaisa' ? '2px solid #16a34a' : '1px solid #ddd', backgroundColor: bookingData.paymentMethod === 'EasyPaisa' ? '#f0fdf4' : '#fff', borderRadius: '8px', padding: '10px', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Easypaisa_logo.png/320px-Easypaisa_logo.png" alt="EasyPaisa" style={{ height: '35px', width: 'auto', marginBottom: '5px', objectFit: 'contain' }} onError={(e) => { e.target.style.display='none'; e.target.parentElement.innerHTML = '🟢 <strong>EasyPaisa</strong>'; }} /><strong>EasyPaisa</strong>
+                        </div>
+
+                    </div>
+                    {bookingData.paymentMethod !== 'Cash' && (<p style={{fontSize: '0.8rem', color: '#666', marginTop: '12px', textAlign: 'center'}}>ℹ️ Send money to <strong>{selectedVehicle.ownerPhone}</strong> via {bookingData.paymentMethod}</p>)}
+                  </div>
+
+                  <div className="booking-section">
+                    <h3>Your Information</h3>
+                    <div className="form-group"><label>Phone *</label><input type="text" value={bookingData.phone} onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })} required /></div>
+                    <div className="form-group"><label>Registration No *</label><input type="text" value={bookingData.regNo} onChange={(e) => setBookingData({ ...bookingData, regNo: e.target.value })} required /></div>
+                  </div>
+
+                  <div className="booking-summary-compact">
+                    <div className="summary-row"><span>Vehicle:</span><strong>{selectedVehicle.name}</strong></div>
+                    {selectedVehicle.isShared ? (<div className="summary-row"><span>Seats:</span><strong>{bookingData.seats}</strong></div>) : (<div className="summary-row"><span>Duration:</span><strong>{bookingData.hours} hr</strong></div>)}
+                    <div className="summary-row total"><span>Total Cost:</span><strong>PKR {totalCost.toLocaleString()}</strong></div>
+                  </div>
+
+                  <div className="modal-buttons">
+                    <button type="button" onClick={handleCloseModal} className="cancel-btn">Cancel</button>
+                    <button type="submit" className="confirm-btn" disabled={bookingStatus === 'submitting'}>{bookingStatus === 'submitting' ? 'Sending...' : 'Send Request 🚀'}</button>
+                  </div>
+                </form>
+            )}
           </div>
         </div>
       )}
